@@ -7,7 +7,7 @@ import (
 
 func (api *API) writeJSON(w http.ResponseWriter, status int, data any, headers http.Header) error {
 
-	js, err := json.Marshal(data)
+	js, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		return err
 	}
