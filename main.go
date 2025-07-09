@@ -24,11 +24,11 @@ func main() {
 	var cfg config
 
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
-	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
-	flag.StringVar(&cfg.env, "logFmt", "text", "Log format (text|json)")
+	flag.StringVar(&cfg.env, "env", "development", "Environment (development|production)")
+	flag.StringVar(&cfg.logFmt, "logFmt", "text", "Log format (text|json)")
 
 	flag.Parse()
-	api := api.NewAPI(cfg.env)
+	api := api.NewAPI(cfg.env, version)
 	logger := log.NewWithOptions(os.Stderr, log.Options{
 		ReportCaller:    true,
 		ReportTimestamp: true,

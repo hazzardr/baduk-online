@@ -1,10 +1,19 @@
 package api
 
 import (
-	"fmt"
+	"log/slog"
 	"net/http"
 )
 
 func (api *API) HealthCheckHandler(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprintf(w, "OK")
+	hc := map[string]string{
+		"status":  "OK",
+		"env":     api.environment,
+		"version": api.version,
+	}
+	err := api.writeJSON(w, http.StatusOK, hc, nil)
+	if err != nil {
+		slog.Error("failed to marshal health check response", slog.Any("error", err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
