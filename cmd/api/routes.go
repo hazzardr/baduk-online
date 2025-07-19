@@ -1,25 +1,24 @@
 package api
 
 import (
-	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
-func (api *API) Routes() http.Handler {
+func (api *API) Routes() *echo.Echo {
+	// Configure middleware
+	api.echo.Use(middleware.RequestID())
+	api.echo.Use(middleware.Logger())
+	api.echo.Use(middleware.Recover())
+	api.echo.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
+		Timeout: 30 * time.Second,
+	}))
 
-	r := chi.NewRouter()
+	// Group routes
+	v1 := api.echo.Group("/api/v1")
+	v1.GET("/health", api.HealthCheckHandler)
 
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(30 * time.Second))
-
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Get("/health", api.HealthCheckHandler)
-	})
-	return r
+	return api.echo
 }

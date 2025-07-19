@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"time"
 
@@ -37,13 +36,18 @@ func main() {
 
 	slog.SetDefault(slog.New(logger))
 
-	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.port),
-		Handler:      api.Routes(),
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+	// Echo server is configured in the API struct
+	e := api.Routes()
+
+	// Configure server timeouts
+	e.Server.ReadTimeout = 5 * time.Second
+	e.Server.WriteTimeout = 10 * time.Second
+
+	slog.Info("starting server", "address", fmt.Sprintf(":%d", cfg.port), "env", cfg.env)
+
+	// Start the server
+	if err := e.Start(fmt.Sprintf(":%d", cfg.port)); err != nil {
+		slog.Error("server error", "error", err.Error())
+		os.Exit(1)
 	}
-	slog.Info("starting server", "address", srv.Addr, "env", cfg.env)
-	_ = srv.ListenAndServe()
-	os.Exit(1)
 }
