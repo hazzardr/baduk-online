@@ -16,9 +16,13 @@ func New(dsn string) (*Database, error) {
 	pool, err := pgxpool.New(context.Background(), dsn)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to create connection pool: %w", err)
+		return nil, fmt.Errorf("unable to create connection pool: %v", err)
 	}
 
+	err = pool.Ping(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize connection pool: %v", err)
+	}
 	return &Database{
 		pool,
 	}, nil

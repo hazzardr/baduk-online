@@ -1,5 +1,5 @@
 project_name := "gobaduk"
-
+set dotenv-load := true
 # print this
 help:
     @echo ""
