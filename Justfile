@@ -1,3 +1,8 @@
+# Local Database Configuration
+db_local := "postgres://postgres:postgres@localhost:5432/go_baduk?sslmode=disable"
+# Add your production configuration here
+db_prod := "postgres://user:password@prod-host:5432/go_baduk?sslmode=disable"
+
 project_name := "gobaduk"
 set dotenv-load := true
 # print this
@@ -27,3 +32,24 @@ clean:
 # run the project
 run:
     go run .
+
+# run database migrations against the specified environment
+migrate dbUrl:
+    goose postgres {{dbUrl}} -dir migrations up
+
+# get the status of the db migrations for the specified environment
+status dbUrl:
+    goose postgres {{dbUrl}} -dir migrations status
+
+# Aliases for common operations
+local-migrate:
+    just migrate {{db_local}}
+
+local-status:
+    just status {{db_local}}
+
+prod-migrate:
+    just migrate {{db_prod}}
+
+prod-status:
+    just status {{db_prod}}
