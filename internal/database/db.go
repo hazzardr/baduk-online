@@ -8,7 +8,7 @@ import (
 )
 
 type Database struct {
-	pool *pgxpool.Pool
+	Pool *pgxpool.Pool
 }
 
 // New Initializes a new database connection
@@ -29,9 +29,9 @@ func New(dsn string) (*Database, error) {
 }
 
 func (db *Database) Close() {
-	db.pool.Close()
+	db.Pool.Close()
 }
 
 func (db *Database) Ping(ctx context.Context) error {
-	return db.pool.Ping(ctx)
+	return db.Pool.Ping(ctx)
 }

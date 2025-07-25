@@ -21,7 +21,7 @@ func (db *Database) GetAllUsers(ctx context.Context) ([]User, error) {
         FROM users
         ORDER BY id`
 
-	rows, err := db.pool.Query(ctx, query)
+	rows, err := db.Pool.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
