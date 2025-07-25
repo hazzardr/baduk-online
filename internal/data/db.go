@@ -1,4 +1,4 @@
-package database
+package data
 
 import (
 	"context"
@@ -8,7 +8,13 @@ import (
 )
 
 type Database struct {
-	Pool *pgxpool.Pool
+	Pool  *pgxpool.Pool
+	Users *userStore
+}
+
+// UserStore handles transactions related to Users
+type userStore struct {
+	db *pgxpool.Pool
 }
 
 // New Initializes a new database connection
@@ -25,6 +31,7 @@ func New(dsn string) (*Database, error) {
 	}
 	return &Database{
 		pool,
+		&userStore{db: pool},
 	}, nil
 }
 

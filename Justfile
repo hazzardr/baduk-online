@@ -30,11 +30,15 @@ clean:
 run:
     go run .
 
-# run database migrations against the specified environment
-migrate dbUrl:
-    goose postgres {{dbUrl}} -dir migrations up
+# create a migration script
+create-migration migrationName:
+    goose postgres $POSTGRES_URL -dir migrations create {{migrationName}} sql
 
-# get the status of the db migrations for the specified environment
-status dbUrl:
-    goose postgres {{dbUrl}} -dir migrations status
+# run database migrations
+migrate:
+    goose postgres $POSTGRES_URL -dir migrations up
+
+# get the status of the db migrations
+status:
+    goose postgres $POSTGRES_URL -dir migrations status
 

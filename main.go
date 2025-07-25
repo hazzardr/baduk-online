@@ -10,7 +10,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/hazzardr/go-baduk/cmd/api"
-	"github.com/hazzardr/go-baduk/internal/database"
+	"github.com/hazzardr/go-baduk/internal/data"
 )
 
 const version = "0.1.0"
@@ -39,7 +39,7 @@ func main() {
 
 	slog.SetDefault(slog.New(logger))
 
-	db, err := database.New(cfg.dsn)
+	db, err := data.New(cfg.dsn)
 	if err != nil {
 		slog.Error("db init failed", slog.Any("err", err))
 		os.Exit(1)
