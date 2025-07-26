@@ -7,6 +7,7 @@ import (
 
 	"github.com/hazzardr/go-baduk/internal/validator"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -103,6 +104,34 @@ func (u *userStore) Insert(ctx context.Context, user *User) error {
 	return nil
 }
 
-func (u *userStore) GetByEmail(email string) (*User, error) {
+func (u *userStore) GetByEmail(ctx context.Context, email string) (*User, error) {
 	//TODO:
+	query := `
+		SELECT
+			u.id,
+			u.created_at,
+			u.name,
+			u.email,
+			u.password_hash,
+			u.validated,
+			u.version
+		FROM users u
+		WHERE
+			u.email = $1
+		;
+	`
+	var user User
+	c, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	err := u.db.QueryRow(c, query).Scan(&user)
+	if err != nil {
+		var e *pgconn.PgError
+		if errors.As(err, &e) {
+			if e == pgx.ErrNoRows {
+				return nil, ErrNoUserFound
+			}
+		}
+		return nil, err
+	}
+	return &user, nil
 }
