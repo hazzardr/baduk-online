@@ -105,7 +105,6 @@ func (u *userStore) Insert(ctx context.Context, user *User) error {
 }
 
 func (u *userStore) GetByEmail(ctx context.Context, email string) (*User, error) {
-	//TODO:
 	query := `
 		SELECT
 			u.id,

@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func (api *API) HealthCheckHandler(w http.ResponseWriter, _ *http.Request) {
+func (api *API) handleHealthCheck(w http.ResponseWriter, _ *http.Request) {
 	statuses := make(map[string]string)
 	err := api.db.Ping(context.Background())
 

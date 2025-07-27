@@ -26,7 +26,8 @@ func (api *API) Routes() http.Handler {
 	r.Use(middleware.Timeout(20 * time.Second))
 
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Get("/health", api.HealthCheckHandler)
+		r.Get("/health", api.handleHealthCheck)
+		r.Get("/users/{email}", api.handleGetUserByEmail)
 	})
 	return r
 }
