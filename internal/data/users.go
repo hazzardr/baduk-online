@@ -13,7 +13,7 @@ import (
 )
 
 type User struct {
-	ID        int       `json:"id"`
+	ID        int       `json:"-"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	Name      string    `json:"name"`
 	Email     string    `json:"email"`

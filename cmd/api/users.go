@@ -31,7 +31,7 @@ func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 
-	err := api.readJSON(w, r, input)
+	err := api.readJSON(w, r, &input)
 	if err != nil {
 		api.badRequestResponse(w, r, err)
 		return

@@ -12,6 +12,10 @@ import (
 
 var OneMB int64 = 1_048_576
 
+type errorResponse struct {
+	Error any `json:"error"`
+}
+
 func (api *API) writeJSON(w http.ResponseWriter, status int, data any, headers http.Header) error {
 	js, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
@@ -32,8 +36,7 @@ func (api *API) readJSON(w http.ResponseWriter, r *http.Request, inputStruct any
 	r.Body = http.MaxBytesReader(w, r.Body, OneMB)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
-	err := dec.Decode(&inputStruct)
-
+	err := dec.Decode(inputStruct)
 	if err != nil {
 		var syntaxError *json.SyntaxError
 		var unmarshalTypeError *json.UnmarshalTypeError
@@ -76,7 +79,10 @@ func (api *API) badRequestResponse(w http.ResponseWriter, r *http.Request, err e
 	api.errorResponse(w, r, http.StatusBadRequest, err.Error())
 }
 func (api *API) errorResponse(w http.ResponseWriter, r *http.Request, status int, data any) {
-	err := api.writeJSON(w, status, data, nil)
+	resp := &errorResponse{
+		Error: data,
+	}
+	err := api.writeJSON(w, status, resp, nil)
 	if err != nil {
 		slog.Error(err.Error(), "method", r.Method, "uri", r.URL.RequestURI())
 		w.WriteHeader(500)
