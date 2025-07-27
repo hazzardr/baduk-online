@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 )
 
 func (api *API) handleHealthCheck(w http.ResponseWriter, _ *http.Request) {

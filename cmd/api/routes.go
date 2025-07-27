@@ -1,7 +1,6 @@
 package api
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/alexedwards/scs/v2"
