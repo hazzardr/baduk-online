@@ -1,20 +1,17 @@
 package api
 
-import (
-	"github.com/labstack/echo/v4"
-)
+import "github.com/hazzardr/go-baduk/internal/data"
 
 type API struct {
 	environment string
 	version     string
-	echo        *echo.Echo
+	db          *data.Database
 }
 
-func NewAPI(environment, version string) *API {
-	e := echo.New()
+func NewAPI(environment, version string, db *data.Database) *API {
 	return &API{
 		environment: environment,
 		version:     version,
-		echo:        e,
+		db:          db,
 	}
 }

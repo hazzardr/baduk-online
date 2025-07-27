@@ -1,17 +1,32 @@
 package api
 
 import (
+	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 )
 
-func (api *API) HealthCheckHandler(c echo.Context) error {
-	hc := map[string]string{
-		"status":  "OK",
+func (api *API) handleHealthCheck(w http.ResponseWriter, _ *http.Request) {
+	statuses := make(map[string]string)
+	err := api.db.Ping(context.Background())
+
+	if err != nil {
+		slog.Error("db conn failed", "err", err)
+		statuses["db"] = "DOWN"
+	} else {
+		statuses["db"] = "OK"
+	}
+
+	hc := map[string]any{
+		"status":  statuses,
 		"env":     api.environment,
 		"version": api.version,
 	}
-
-	return c.JSON(http.StatusOK, hc)
+	err = api.writeJSON(w, http.StatusOK, hc, nil)
+	if err != nil {
+		slog.Error("failed to marshal health check response", slog.Any("error", err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }

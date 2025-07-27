@@ -1,0 +1,36 @@
+# Docker Build
+.git
+.github
+.dockerignore
+docker-compose.yml
+Dockerfile
+coverage.out
+*.md
+
+# Go Development
+vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# Binaries for programs and plugins
+bin/
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# .env
+.env

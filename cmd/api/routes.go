@@ -3,22 +3,32 @@ package api
 import (
 	"time"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/alexedwards/scs/v2"
+
+	"github.com/alexedwards/scs/pgxstore"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
-func (api *API) Routes() *echo.Echo {
-	// Configure middleware
-	api.echo.Use(middleware.RequestID())
-	api.echo.Use(middleware.Logger())
-	api.echo.Use(middleware.Recover())
-	api.echo.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
-		Timeout: 30 * time.Second,
-	}))
+func (api *API) Routes() http.Handler {
+	sm := scs.New()
+	sm.Lifetime = 24 * time.Hour
+	sm.Cookie.Secure = true
+	sm.Store = pgxstore.New(api.db.Pool)
+	r := chi.NewRouter()
 
-	// Group routes
-	v1 := api.echo.Group("/api/v1")
-	v1.GET("/health", api.HealthCheckHandler)
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(sm.LoadAndSave)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.Timeout(20 * time.Second))
 
-	return api.echo
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Get("/health", api.handleHealthCheck)
+
+		r.Get("/users/{email}", api.handleGetUserByEmail)
+		r.Post("/users", api.handleRegisterUser)
+	})
+	return r
 }
