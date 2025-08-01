@@ -1,15 +1,20 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"time"
+
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 
 	"github.com/charmbracelet/log"
 	"github.com/hazzardr/go-baduk/cmd/api"
 	"github.com/hazzardr/go-baduk/internal/data"
+	"github.com/hazzardr/go-baduk/internal/mail"
 )
 
 const version = "0.1.0"
@@ -44,7 +49,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	api := api.NewAPI(cfg.env, version, db)
+	awsCfg, err := awsConfig.LoadDefaultConfig(context.Background())
+	if err != nil {
+		slog.Error("aws config not found", "err", err)
+	}
+	mailer := mail.NewSNSMailer(awsCfg)
+	api := api.NewAPI(cfg.env, version, db, mailer)
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
 		Handler:      api.Routes(),
