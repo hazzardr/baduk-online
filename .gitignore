@@ -35,3 +35,6 @@ bin/
 .terraform/
 .terraform.lock.hcl
 
+# Crush directory
+.crush/
+
