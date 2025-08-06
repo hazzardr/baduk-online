@@ -122,7 +122,7 @@ func (u *userStore) GetByEmail(ctx context.Context, email string) (*User, error)
 	var user User
 	c, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	err := u.db.QueryRow(c, query).Scan(&user)
+	err := u.db.QueryRow(c, query, email).Scan(&user)
 	if err != nil {
 		var e *pgconn.PgError
 		if errors.As(err, &e) {
@@ -133,4 +133,26 @@ func (u *userStore) GetByEmail(ctx context.Context, email string) (*User, error)
 		return nil, err
 	}
 	return &user, nil
+}
+func (u *userStore) DeleteUser(ctx context.Context, user *User) error {
+	query := `
+		DELETE
+		FROM users
+		WHERE
+			email = $1
+		;
+	`
+	c, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	result, err := u.db.Exec(c, query, user.Email)
+	if err != nil {
+		return err
+	}
+	
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNoUserFound
+	}
+	
+	return nil
 }

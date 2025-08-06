@@ -1,25 +1,76 @@
 package mail
 
 import (
+	"bytes"
+	"context"
+	"embed"
+	"html/template"
+
 	"github.com/hazzardr/go-baduk/internal/data"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ses"
+	"github.com/aws/aws-sdk-go-v2/service/ses/types"
 )
 
+//go:embed "templates"
+var templateFS embed.FS
+
 type Mailer interface {
-	SendRegistrationEmail(user *data.User) error
+	SendRegistrationEmail(ctx context.Context, user *data.User) error
 }
 
-type SNSMailer struct {
+type SESMailer struct {
 	client *ses.Client
 }
 
-func NewSNSMailer(awsCfg aws.Config) *SNSMailer {
+func NewSESMailer(awsCfg aws.Config) *SESMailer {
 	ses := ses.NewFromConfig(awsCfg)
-	return &SNSMailer{client: ses}
+	return &SESMailer{client: ses}
 }
 
-func (m *SNSMailer) SendRegistrationEmail(user *data.User) error {
-	return nil
+type RegistrationEmailData struct {
+	Name     string
+	Email    string
+	LoginURL string
+}
+
+func (m *SESMailer) SendRegistrationEmail(ctx context.Context, user *data.User) error {
+	tmpl, err := template.ParseFS(templateFS, "templates/registration.tmpl")
+	if err != nil {
+		return err
+	}
+
+	data := RegistrationEmailData{
+		Name:     user.Name,
+		Email:    user.Email,
+		LoginURL: "https://go-baduk.com/login",
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return err
+	}
+
+	input := &ses.SendEmailInput{
+		Source: aws.String("notifications@bricoud.xyz"),
+		Destination: &types.Destination{
+			ToAddresses: []string{"rbrianhazzard@protonmail.com"},
+		},
+		Message: &types.Message{
+			Subject: &types.Content{
+				Data:    aws.String("Welcome to Go-Baduk!"),
+				Charset: aws.String("UTF-8"),
+			},
+			Body: &types.Body{
+				Html: &types.Content{
+					Data:    aws.String(body.String()),
+					Charset: aws.String("UTF-8"),
+				},
+			},
+		},
+	}
+
+	_, err = m.client.SendEmail(ctx, input)
+	return err
 }

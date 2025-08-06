@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/hazzardr/go-baduk/internal/data"
@@ -15,10 +16,10 @@ func (api *API) handleGetUserByEmail(w http.ResponseWriter, r *http.Request) {
 	user, err := api.db.Users.GetByEmail(r.Context(), email)
 	if err != nil {
 		if errors.Is(err, data.ErrNoUserFound) {
-			api.errorResponse(w, r, http.StatusNotFound, err.Error())
+			api.errorResponse(w, r, http.StatusNotFound, "user not found")
 			return
 		}
-		api.errorResponse(w, r, http.StatusInternalServerError, "failed to retrieve user")
+		api.serverErrorResponse(w, r, err)
 		return
 	}
 	api.writeJSON(w, 200, user, nil)
@@ -44,12 +45,13 @@ func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	err = user.Password.Set(input.Password)
 	if err != nil {
-		api.errorResponse(w, r, http.StatusInternalServerError, "internal server error occurred")
+		api.serverErrorResponse(w, r, err)
+		return
 	}
 
 	v := validator.New()
 	if data.ValidateUser(v, user); !v.Valid() {
-		api.failedValidation(w, r, v.Errors)
+		api.failedValidationResponse(w, r, v.Errors)
 		return
 	}
 
@@ -59,14 +61,23 @@ func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, data.ErrDuplicateEmail):
 			api.errorResponse(w, r, http.StatusConflict, "a user with this email address already exists")
 		default:
-			api.errorResponse(w, r, http.StatusInternalServerError, err.Error())
+			api.serverErrorResponse(w, r, err)
 		}
 		return
 	}
 
+	err = api.mailer.SendRegistrationEmail(r.Context(), user)
+	if err != nil {
+		deleteErr := api.db.Users.DeleteUser(r.Context(), user)
+		if deleteErr != nil {
+			slog.Error("failed to remove user after registration email fail. Likely in bad state", "user", user, "emailErr", err, "deleteErr", deleteErr)
+		}
+		api.serverErrorResponse(w, r, err)
+		return
+	}
 	err = api.writeJSON(w, http.StatusCreated, user, nil)
 	if err != nil {
-		api.errorResponse(w, r, http.StatusInternalServerError, err.Error())
+		api.serverErrorResponse(w, r, err)
 	}
 
 }

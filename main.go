@@ -53,7 +53,7 @@ func main() {
 	if err != nil {
 		slog.Error("aws config not found", "err", err)
 	}
-	mailer := mail.NewSNSMailer(awsCfg)
+	mailer := mail.NewSESMailer(awsCfg)
 	api := api.NewAPI(cfg.env, version, db, mailer)
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),

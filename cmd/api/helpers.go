@@ -89,6 +89,11 @@ func (api *API) errorResponse(w http.ResponseWriter, r *http.Request, status int
 	}
 }
 
-func (api *API) failedValidation(w http.ResponseWriter, r *http.Request, errors map[string]string) {
+func (api *API) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
+	slog.Error("internal server error", "method", r.Method, "uri", r.URL.RequestURI(), "error", err.Error())
+	api.errorResponse(w, r, http.StatusInternalServerError, "internal server error")
+}
+
+func (api *API) failedValidationResponse(w http.ResponseWriter, r *http.Request, errors map[string]string) {
 	api.errorResponse(w, r, http.StatusUnprocessableEntity, errors)
 }
