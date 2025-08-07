@@ -148,11 +148,11 @@ func (u *userStore) DeleteUser(ctx context.Context, user *User) error {
 	if err != nil {
 		return err
 	}
-	
+
 	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
 		return ErrNoUserFound
 	}
-	
+
 	return nil
 }

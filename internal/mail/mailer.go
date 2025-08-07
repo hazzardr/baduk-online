@@ -5,6 +5,8 @@ import (
 	"context"
 	"embed"
 	"html/template"
+	"log/slog"
+	"time"
 
 	"github.com/hazzardr/go-baduk/internal/data"
 
@@ -27,6 +29,19 @@ type SESMailer struct {
 func NewSESMailer(awsCfg aws.Config) *SESMailer {
 	ses := ses.NewFromConfig(awsCfg)
 	return &SESMailer{client: ses}
+}
+
+func (m *SESMailer) Ping() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	_, err := m.client.ListIdentities(ctx, &ses.ListIdentitiesInput{
+		IdentityType: types.IdentityTypeEmailAddress,
+	})
+	if err != nil {
+		return err
+	}
+	slog.Info("ses ping OK")
+	return err
 }
 
 type RegistrationEmailData struct {

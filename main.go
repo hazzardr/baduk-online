@@ -54,6 +54,11 @@ func main() {
 		slog.Error("aws config not found", "err", err)
 	}
 	mailer := mail.NewSESMailer(awsCfg)
+	err = mailer.Ping()
+	if err != nil {
+		slog.Error("failed to initialize SES client", "err", err.Error())
+		os.Exit(1)
+	}
 	api := api.NewAPI(cfg.env, version, db, mailer)
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
