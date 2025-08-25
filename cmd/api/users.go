@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/hazzardr/go-baduk/internal/data"
-	"github.com/hazzardr/go-baduk/internal/validator"
+	"github.com/hazzardr/baduk-online/internal/data"
+	"github.com/hazzardr/baduk-online/internal/validator"
 
 	"github.com/go-chi/chi/v5"
 )

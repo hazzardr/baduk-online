@@ -1,8 +1,8 @@
 package api
 
 import (
-	"github.com/hazzardr/go-baduk/internal/data"
-	"github.com/hazzardr/go-baduk/internal/mail"
+	"github.com/hazzardr/baduk-online/internal/data"
+	"github.com/hazzardr/baduk-online/internal/mail"
 )
 
 type API struct {
