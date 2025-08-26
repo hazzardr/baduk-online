@@ -23,11 +23,10 @@ func (api *API) Routes() http.Handler {
 	r.Use(sm.LoadAndSave)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(20 * time.Second))
+	r.Use(middleware.Timeout(10 * time.Second))
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", api.handleHealthCheck)
-
 		r.Get("/users/{email}", api.handleGetUserByEmail)
 		r.Post("/users", api.handleRegisterUser)
 	})

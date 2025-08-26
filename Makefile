@@ -1,13 +1,4 @@
-# Local Database Configuration
-
-PROJECT_NAME := baduk_online
-
-# Load environment variables from .env file
-ifneq (,$(wildcard ./.env))
-    include .env
-    export
-endif
-
+PROJECT_NAME=baduk.online
 # print this
 help:
 	@echo ""
@@ -24,6 +15,7 @@ help:
 	@echo "  create-migration  - create a migration script"
 	@echo "  migrate           - run database migrations"
 	@echo "  status            - get the status of the db migrations"
+	@echo "  db                - start the database container"
 
 # update dependencies
 update:
@@ -54,4 +46,17 @@ migrate:
 status:
 	goose postgres $(POSTGRES_URL) -dir migrations status
 
-.PHONY: help update build clean run create-migration migrate status
+# start the database
+db:
+	podman run -d \
+          --name postgres \
+          -p 5432:5432 \
+          -e POSTGRES_USER=postgres \
+          -e POSTGRES_PASSWORD=postgres \
+          -e POSTGRES_DB=go_baduk \
+          -v postgres_data:/var/lib/postgresql/data \
+          --restart unless-stopped \
+          --replace \
+          postgres:17.5
+
+.PHONY: help update build clean run create-migration migrate status db-up

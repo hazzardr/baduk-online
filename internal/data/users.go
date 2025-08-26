@@ -2,12 +2,12 @@ package data
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
 	"github.com/hazzardr/baduk-online/internal/validator"
 	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -117,13 +117,10 @@ func (u *userStore) GetByEmail(ctx context.Context, email string) (*User, error)
 	var user User
 	c, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	err := u.db.QueryRow(c, query).Scan(&user)
+	err := u.db.QueryRow(c, query, email).Scan(&user)
 	if err != nil {
-		var e *pgconn.PgError
-		if errors.As(err, &e) {
-			if e == pgx.ErrNoRows {
-				return nil, ErrNoUserFound
-			}
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNoUserFound
 		}
 		return nil, err
 	}

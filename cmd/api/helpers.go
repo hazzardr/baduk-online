@@ -78,6 +78,7 @@ func (api *API) readJSON(w http.ResponseWriter, r *http.Request, inputStruct any
 func (api *API) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
 	api.errorResponse(w, r, http.StatusBadRequest, err.Error())
 }
+
 func (api *API) errorResponse(w http.ResponseWriter, r *http.Request, status int, data any) {
 	resp := &errorResponse{
 		Error: data,
@@ -85,7 +86,7 @@ func (api *API) errorResponse(w http.ResponseWriter, r *http.Request, status int
 	err := api.writeJSON(w, status, resp, nil)
 	if err != nil {
 		slog.Error(err.Error(), "method", r.Method, "uri", r.URL.RequestURI())
-		w.WriteHeader(500)
+		w.WriteHeader(status)
 	}
 }
 

@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/hazzardr/baduk-online/internal/data"
@@ -18,6 +19,7 @@ func (api *API) handleGetUserByEmail(w http.ResponseWriter, r *http.Request) {
 			api.errorResponse(w, r, http.StatusNotFound, err.Error())
 			return
 		}
+		slog.Error("failed to query user details", "email", email, "err", err)
 		api.errorResponse(w, r, http.StatusInternalServerError, "failed to retrieve user")
 		return
 	}
