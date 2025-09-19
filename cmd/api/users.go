@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/hazzardr/go-baduk/internal/data"
-	"github.com/hazzardr/go-baduk/internal/validator"
+	"github.com/hazzardr/baduk-online/internal/data"
+	"github.com/hazzardr/baduk-online/internal/validator"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -19,7 +19,8 @@ func (api *API) handleGetUserByEmail(w http.ResponseWriter, r *http.Request) {
 			api.errorResponse(w, r, http.StatusNotFound, "user not found")
 			return
 		}
-		api.serverErrorResponse(w, r, err)
+		slog.Error("failed to query user details", "email", email, "err", err)
+		api.errorResponse(w, r, http.StatusInternalServerError, "failed to retrieve user")
 		return
 	}
 	api.writeJSON(w, 200, user, nil)

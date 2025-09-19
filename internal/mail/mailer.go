@@ -1,18 +1,16 @@
 package mail
 
 import (
-	"bytes"
 	"context"
-	"embed"
-	"html/template"
 	"log/slog"
 	"time"
 
-	"github.com/hazzardr/go-baduk/internal/data"
+	"github.com/hazzardr/baduk-online/internal/data"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/ses"
-	"github.com/aws/aws-sdk-go-v2/service/ses/types"
+
+	ses "github.com/aws/aws-sdk-go-v2/service/sesv2"
+	sesTypes "github.com/aws/aws-sdk-go-v2/service/sesv2/types"
 )
 
 //go:embed "templates"
@@ -50,42 +48,35 @@ type RegistrationEmailData struct {
 	LoginURL string
 }
 
-func (m *SESMailer) SendRegistrationEmail(ctx context.Context, user *data.User) error {
-	tmpl, err := template.ParseFS(templateFS, "templates/registration.tmpl")
-	if err != nil {
-		return err
-	}
-
-	data := RegistrationEmailData{
-		Name:     user.Name,
-		Email:    user.Email,
-		LoginURL: "https://go-baduk.com/login",
-	}
-
-	var body bytes.Buffer
-	if err := tmpl.Execute(&body, data); err != nil {
-		return err
-	}
-
-	input := &ses.SendEmailInput{
-		Source: aws.String("notifications@bricoud.xyz"),
-		Destination: &types.Destination{
-			ToAddresses: []string{"rbrianhazzard@protonmail.com"},
+// SendRegistrationEmail sends an email with a verification code + redirect for account activation
+func (m *SNSMailer) SendRegistrationEmail(user *data.User) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	subject := "my brand new subject"
+	message := "hello world"
+	fromEmail := "no-reply.baduk.online"
+	res, err := m.client.SendEmail(ctx, &ses.SendEmailInput{
+		Destination: &sesTypes.Destination{
+			ToAddresses: []string{user.Email},
 		},
-		Message: &types.Message{
-			Subject: &types.Content{
-				Data:    aws.String("Welcome to Go-Baduk!"),
-				Charset: aws.String("UTF-8"),
-			},
-			Body: &types.Body{
-				Html: &types.Content{
-					Data:    aws.String(body.String()),
-					Charset: aws.String("UTF-8"),
+		Content: &sesTypes.EmailContent{
+			Simple: &sesTypes.Message{
+				Body: &sesTypes.Body{
+					// Html
+					Text: &sesTypes.Content{
+						Data: &message,
+					},
+				},
+				Subject: &sesTypes.Content{
+					Data: &subject,
 				},
 			},
 		},
+		FromEmailAddress: &fromEmail,
+	})
+	if err != nil {
+		return err
 	}
-
-	_, err = m.client.SendEmail(ctx, input)
-	return err
+	slog.Debug("sent registration email", "messageID", res.MessageId, "destination", user.Email)
+	return nil
 }

@@ -12,9 +12,9 @@ import (
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 
 	"github.com/charmbracelet/log"
-	"github.com/hazzardr/go-baduk/cmd/api"
-	"github.com/hazzardr/go-baduk/internal/data"
-	"github.com/hazzardr/go-baduk/internal/mail"
+	"github.com/hazzardr/baduk-online/cmd/api"
+	"github.com/hazzardr/baduk-online/internal/data"
+	"github.com/hazzardr/baduk-online/internal/mail"
 )
 
 const version = "0.1.0"
