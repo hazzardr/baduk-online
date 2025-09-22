@@ -1,0 +1,14 @@
+[Unit]
+Description=Https socket listener
+Before=caddy.service
+
+[Socket]
+ListenStream=443
+ListenDatagram=443
+BindIPv6Only=both
+FileDescriptorName=https
+Service=caddy.service
+
+[Install]
+WantedBy=sockets.target
+RequiredBy=caddy.service

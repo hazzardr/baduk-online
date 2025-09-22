@@ -1,0 +1,30 @@
+[Unit]
+Description=Caddy Reverse Proxy
+Requires=http.socket https.socket
+
+[Container]
+User=caddy
+ContainerName=caddy
+HostName=caddy
+Image=ghcr.io/hazzardr/caddy:main
+Network=caddy.network
+Volume=/etc/caddy/Caddyfile:/etc/caddy/Caddyfile
+Volume=caddy-config.volume:/config:Z
+Volume=caddy-data.volume:/data:Z
+AutoUpdate=registry
+Notify=true
+
+HealthCmd=caddy version
+HealthInterval=10s
+HealthRetries=5
+HealthStartPeriod=5s
+HealthTimeout=3s
+HealthOnFailure=kill
+
+[Service]
+Restart=always
+MemoryMax=512M
+Sockets=http.socket https.socket
+
+[Install]
+WantedBy=default.target

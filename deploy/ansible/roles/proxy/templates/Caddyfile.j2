@@ -1,13 +1,13 @@
-(common) {
+baduk.online {
+    tls {
+        dns cloudflare {{ vault_cf_api_token }}
+        resolvers 1.1.1.1
+    }
     header {
         Strict-Transport-Security "max-age=31536000;"
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
     }
-}
-
-baduk.online {
-    import common
     reverse_proxy 0.0.0.0:{{ baduk_port }} {
         header_up Host {host}
         header_up X-Real-IP {remote}

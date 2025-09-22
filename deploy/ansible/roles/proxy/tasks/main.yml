@@ -4,10 +4,11 @@
     src: http.socket.j2
     dest: /etc/systemd/system/http.socket
     mode: '0644'
-- name: Install Caddy
-  dnf:
-    name: caddy
-    state: present
+- name: Ensure HTTPS Socket Configuration
+  template:
+    src: https.socket.j2
+    dest: /etc/systemd/system/https.socket
+    mode: '0644'
 - name: Ensure /etc/caddy directory exists
   file:
     path: /etc/caddy
@@ -17,5 +18,33 @@
   template:
     src: Caddyfile.j2
     dest: /etc/caddy/Caddyfile
-    mode: '0644'
-  notify: restart caddy
+    mode: '0600'
+- name: Deploy Caddy network
+  template:
+    src: caddy.network.j2
+    dest: /etc/containers/systemd/caddy.network
+    mode: '0600'
+- name: Deploy Caddy config volume
+  template:
+    src: caddy-config.volume.j2
+    dest: /etc/containers/systemd/caddy-config.volume
+    mode: '0600'
+- name: Deploy Caddy data volume
+  template:
+    src: caddy-data.volume.j2
+    dest: /etc/containers/systemd/caddy-data.volume
+    mode: '0600'
+- name: Deploy Caddy container
+  template:
+    src: caddy.container.j2
+    dest: /etc/containers/systemd/caddy.container
+    mode: '0600'
+- name: Enable caddy container
+  systemd:
+    name: caddy.service
+    enabled: yes
+  become: yes
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: yes

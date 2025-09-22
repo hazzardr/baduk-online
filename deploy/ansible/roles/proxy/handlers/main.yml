@@ -3,4 +3,3 @@
   service:
     name: caddy
     state: restarted
-  become: yes
