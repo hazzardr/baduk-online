@@ -1,0 +1,29 @@
+---
+- name: Ansible playbook for all hosts
+  hosts: all
+  become: yes
+  vars_files:
+    - vars/vault.yml
+  roles:
+    - ubuntu
+  remote_user: ansible
+  tags: ubuntu
+
+- name: Ansible playbook for configuring Reverse Proxy
+  hosts: reverse_proxy
+  become: yes
+  vars_files:
+    - vars/vault.yml
+  roles:
+    - brihome_reverse_proxy
+  remote_user: ansible
+  tags: reverse_proxy
+
+- name: Ansible playbook for configuring Docker
+  hosts: docker
+  vars_files:
+    - vars/vault.yml
+  roles:
+      - brihome_docker
+  remote_user: ansible
+  tags: docker

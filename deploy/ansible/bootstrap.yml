@@ -1,0 +1,61 @@
+---
+- name: Setup ansible user and group
+  hosts: all
+  become: yes
+  vars_files:
+    - vars/bootstrap_vault.yml
+  vars:
+    ansible_become_password: "{{ vault_ansible_become_pass }}"
+    ansible_user: "{{ vault_ansible_user }}"
+    ansible_ssh_pass: "{{ vault_ansible_become_pass }}"
+  tasks:
+    - name: Create ansible group
+      group:
+        name: ansible
+        state: present
+
+    - name: Create ansible user
+      user:
+        name: ansible
+        group: ansible
+        groups: sudo
+        password: "{{ ansible_become_password | password_hash('sha512') }}"
+        shell: /bin/bash
+        home: /home/ansible
+        createhome: true
+
+    - name: Add to sudoers
+      lineinfile:
+        dest: /etc/sudoers.d/ansible
+        line: "%ansible ALL=(ALL) ALL"
+        state: present
+        create: yes
+        validate: 'visudo -cf %s'
+        owner: root
+        group: root
+        mode: 0440
+
+    - name: Add authorized keys 
+      ansible.posix.authorized_key:
+        user: ansible
+        key: https://github.com/hazzardr.keys
+        exclusive: true
+        state: present
+        
+    - name: Configure SSH settings
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+      loop:
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?ChallengeResponseAuthentication', line: 'ChallengeResponseAuthentication no' }
+      notify: restart sshd
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: ssh
+        state: restarted

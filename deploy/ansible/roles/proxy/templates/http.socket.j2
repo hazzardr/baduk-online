@@ -1,0 +1,13 @@
+[Unit]
+Description=Http socket listener
+Before=caddy.service
+
+[Socket]
+ListenStream=80
+BindIPv6Only=both
+FileDescriptorName=http
+Service=caddy.service
+
+[Install]
+WantedBy=sockets.target
+RequiredBy=caddy.service

@@ -1,0 +1,48 @@
+---
+- name: Update DNF package cache
+  dnf:
+    update_cache: yes
+
+- name: Upgrade all packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_cache: yes
+  notify: reboot
+
+- name: Install dnf-automatic for unattended updates
+  ansible.builtin.dnf:
+    name:
+      - dnf-automatic
+    state: present
+
+- name: Configure dnf-automatic for security updates
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/automatic.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^upgrade_type =', line: 'upgrade_type = security' }
+    - { regexp: '^download_updates =', line: 'download_updates = yes' }
+    - { regexp: '^apply_updates =', line: 'apply_updates = yes' }
+    - { regexp: '^emit_via =', line: 'emit_via = email' }
+    - { regexp: '^email_to =', line: 'email_to = root' }
+
+- name: Enable and start dnf-automatic timer
+  ansible.builtin.systemd:
+    name: dnf-automatic.timer
+    enabled: yes
+    state: started
+
+- name: Install packages
+  dnf:
+    name:
+      - git
+      - ca-certificates
+      - wget
+      - dnf-plugins-core
+      - gnupg2
+      - curl
+      - python3-pip
+      - podman
+    state: present

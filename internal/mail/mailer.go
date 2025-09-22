@@ -2,6 +2,7 @@ package mail
 
 import (
 	"context"
+	"embed"
 	"log/slog"
 	"time"
 
@@ -32,9 +33,7 @@ func NewSESMailer(awsCfg aws.Config) *SESMailer {
 func (m *SESMailer) Ping() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	_, err := m.client.ListIdentities(ctx, &ses.ListIdentitiesInput{
-		IdentityType: types.IdentityTypeEmailAddress,
-	})
+	_, err := m.client.ListEmailIdentities(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -49,9 +48,7 @@ type RegistrationEmailData struct {
 }
 
 // SendRegistrationEmail sends an email with a verification code + redirect for account activation
-func (m *SNSMailer) SendRegistrationEmail(user *data.User) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+func (m *SESMailer) SendRegistrationEmail(ctx context.Context, user *data.User) error {
 	subject := "my brand new subject"
 	message := "hello world"
 	fromEmail := "no-reply.baduk.online"

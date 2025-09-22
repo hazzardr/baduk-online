@@ -1,4 +1,5 @@
 PROJECT_NAME=baduk.online
+
 # print this
 help:
 	@echo ""
@@ -8,46 +9,39 @@ help:
 	@echo "  make <command>"
 	@echo ""
 	@echo "Commands:"
-	@echo "  update            - update dependencies"
-	@echo "  build             - build the project"
-	@echo "  clean             - delete generated code"
-	@echo "  run               - run the project"
-	@echo "  create-migration  - create a migration script"
-	@echo "  migrate           - run database migrations"
-	@echo "  status            - get the status of the db migrations"
-	@echo "  db                - start the database container"
+	@grep '^.PHONY: ' Makefile | sed 's/.PHONY: //' | awk '{split($$0,a," ## "); printf "  \033[34m%0-10s\033[0m %s\n", a[1], a[2]}'
 
-# update dependencies
+.PHONY: update ## update dependencies for the project
 update:
 	go get -u
 	go mod tidy
 
-# build the project
+.PHONY: build ## builds the project into a binary
 build:
 	go build -o ./bin/$(PROJECT_NAME) .
 
-# delete generated code
+.PHONY: clean ## delete generated code
 clean:
 	rm -rf bin/ dist/
 
-# run the project
+.PHONY: run ## run the project
 run:
 	go run .
-
-# create a migration script
-create-migration:
+	
+.PHONY: db/migration/create ## create a migration script
+db/migration/create:
 	goose postgres $(POSTGRES_URL) -dir migrations create $(migrationName) sql
 
-# run database migrations
-migrate:
-	goose postgres $(POSTGRES_URL) -dir migrations up
-
-# get the status of the db migrations
-status:
+	
+.PHONY: db/migration/status ## get the status of the db migrations
+db/migration/status:
 	goose postgres $(POSTGRES_URL) -dir migrations status
 
-# start the database
-db:
+.PHONY: db/migrate ## run database migrations
+db/migrate:
+	goose postgres $(POSTGRES_URL) -dir migrations up
+ .PHONY: db/start ## start the database
+db/start:
 	podman run -d \
           --name postgres \
           -p 5432:5432 \
@@ -59,4 +53,10 @@ db:
           --replace \
           postgres:17.5
 
-.PHONY: help update build clean run create-migration migrate status db-up
+.PHONY: deploy/bootstrap ## bootstrap infrastructure
+deploy/bootstrap:
+	ansible-playbook deploy/ansible/bootstrap.yml \
+		-i deploy/ansible/inventory \
+		--vault-password-file deploy/ansible/.bootstrap_vault_pass
+
+

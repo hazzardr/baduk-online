@@ -26,15 +26,23 @@ go.work.sum
 
 # env file
 .env
+.bootstrap_vault_pass
+.baduk_vault_pass
 
 # Editor/IDE
 .idea/
-# .vscode/
+.vscode/
 
 bin/
+
+# TF
 .terraform/
 .terraform.lock.hcl
 
 # Crush directory
 .crush/
 
+# Ansible
+*vault.yml
+*vault.yaml
+inventory

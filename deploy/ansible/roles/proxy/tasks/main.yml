@@ -1,0 +1,21 @@
+---
+- name: Ensure HTTP Socket Configuration
+  template:
+    src: http.socket.j2
+    dest: /etc/systemd/system/http.socket
+    mode: '0644'
+- name: Install Caddy
+  dnf:
+    name: caddy
+    state: present
+- name: Ensure /etc/caddy directory exists
+  file:
+    path: /etc/caddy
+    state: directory
+    mode: '0755'
+- name: Deploy Caddy configuration
+  template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    mode: '0644'
+  notify: restart caddy
