@@ -1,9 +1,11 @@
 ---
 - name: Update DNF package cache
+  become: yes
   dnf:
     update_cache: yes
 
 - name: Upgrade all packages
+  become: yes
   ansible.builtin.dnf:
     name: "*"
     state: latest
@@ -11,12 +13,29 @@
   notify: reboot
 
 - name: Install dnf-automatic for unattended updates
+  become: yes
   ansible.builtin.dnf:
     name:
       - dnf-automatic
     state: present
 
+- name: Check if /etc/dnf/automatic.conf exists
+  stat:
+    path: /etc/dnf/automatic.conf
+  register: dnf_automatic_conf
+
+- name: Create /etc/dnf/automatic.conf if it doesn't exist
+  copy:
+    dest: /etc/dnf/automatic.conf
+    content: ""
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  when: not dnf_automatic_conf.stat.exists
+
 - name: Configure dnf-automatic for security updates
+  become: yes
   ansible.builtin.lineinfile:
     path: /etc/dnf/automatic.conf
     regexp: "{{ item.regexp }}"
@@ -29,12 +48,14 @@
     - { regexp: '^email_to =', line: 'email_to = root' }
 
 - name: Enable and start dnf-automatic timer
+  become: yes
   ansible.builtin.systemd:
     name: dnf-automatic.timer
     enabled: yes
     state: started
 
 - name: Install packages
+  become: yes
   dnf:
     name:
       - git

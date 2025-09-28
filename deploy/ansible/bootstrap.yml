@@ -8,10 +8,10 @@
     users:
       - name: caddy
         group: caddy
-        password: "{{ vault_caddy_become_password }}"
+        password: "{{ vault_caddy_become_pass }}"
       - name: ansible
         group: ansible
-        password: "{{ vault_ansible_become_password }}"
+        password: "{{ vault_ansible_become_pass }}"
   tasks:
     - name: Create groups
       group:
@@ -23,7 +23,7 @@
       user:
         name: "{{ item.name }}"
         group: "{{ item.group }}"
-        groups: sudo
+        groups: wheel
         password: "{{ item.password | password_hash('sha512') }}"
         shell: /bin/bash
         home: "/home/{{ item.name }}"
@@ -65,5 +65,5 @@
   handlers:
     - name: restart sshd
       service:
-        name: ssh
+        name: sshd
         state: restarted

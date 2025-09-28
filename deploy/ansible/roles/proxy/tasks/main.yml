@@ -1,50 +1,55 @@
 ---
-- name: Ensure HTTP Socket Configuration
+- name: Ensure Socket Configuration
   template:
-    src: http.socket.j2
-    dest: /etc/systemd/system/http.socket
+    src: caddy.socket.j2
+    dest: "~/.config/systemd/user/caddy.socket"
     mode: '0644'
-- name: Ensure HTTPS Socket Configuration
-  template:
-    src: https.socket.j2
-    dest: /etc/systemd/system/https.socket
-    mode: '0644'
-- name: Ensure /etc/caddy directory exists
+
+- name: Ensure caddy_etc directory exists
   file:
-    path: /etc/caddy
+    path: "~/caddy_etc"
     state: directory
     mode: '0755'
+
 - name: Deploy Caddy configuration
   template:
     src: Caddyfile.j2
-    dest: /etc/caddy/Caddyfile
-    mode: '0600'
+    dest: "~/caddy_etc/Caddyfile"
+    mode: '0644'
+  become: no
+  
+- name: Ensure user containers systemd directory exists
+  file:
+    path: "~/.config/containers/systemd"
+    state: directory
+    mode: '0700'
+
 - name: Deploy Caddy network
   template:
     src: caddy.network.j2
-    dest: /etc/containers/systemd/caddy.network
+    dest: "~/.config/containers/systemd/caddy.network"
     mode: '0600'
+
 - name: Deploy Caddy config volume
   template:
     src: caddy-config.volume.j2
-    dest: /etc/containers/systemd/caddy-config.volume
+    dest: "~/.config/containers/systemd/caddy-config.volume"
     mode: '0600'
+
 - name: Deploy Caddy data volume
   template:
     src: caddy-data.volume.j2
-    dest: /etc/containers/systemd/caddy-data.volume
+    dest: "~/.config/containers/systemd/caddy-data.volume"
     mode: '0600'
+
 - name: Deploy Caddy container
   template:
     src: caddy.container.j2
-    dest: /etc/containers/systemd/caddy.container
+    dest: "~/.config/containers/systemd/caddy.container"
     mode: '0600'
-- name: Enable caddy container
-  systemd:
-    name: caddy.service
-    enabled: yes
-  become: yes
-- name: Reload systemd daemon
+
+- name: Reload user systemd daemon
   systemd:
     daemon_reload: yes
-  become: yes
+    scope: user
+

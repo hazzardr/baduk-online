@@ -1,0 +1,10 @@
+[Unit]
+Description=Caddy socket listener
+
+[Socket]
+ListenStream=[::]:{{ baduk_port }}
+BindIPv6Only=both
+
+[Install]
+WantedBy=sockets.target
+RequiredBy=caddy.service
