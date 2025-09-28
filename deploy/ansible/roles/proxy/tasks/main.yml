@@ -4,6 +4,12 @@
     path: "~/.config/systemd/user"
     state: directory
     mode: '0755'
+  
+- name: Ensure user containers systemd directory exists
+  file:
+    path: "~/.config/containers/systemd"
+    state: directory
+    mode: '0700'
     
 - name: Ensure Socket Configuration
   template:
@@ -23,12 +29,6 @@
     dest: "~/caddy_etc/Caddyfile"
     mode: '0644'
   become: no
-  
-- name: Ensure user containers systemd directory exists
-  file:
-    path: "~/.config/containers/systemd"
-    state: directory
-    mode: '0700'
 
 - name: Deploy Caddy network
   template:
