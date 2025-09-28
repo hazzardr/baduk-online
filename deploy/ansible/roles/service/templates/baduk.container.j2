@@ -6,7 +6,7 @@ Requires=postgres.service
 [Container]
 ContainerName=baduk
 Image=ghcr.io/hazzardr/baduk-online:main
-EnvironmentFile=~/baduk_env/.env
+EnvironmentFile=~/baduk_env/prod.yml
 Network=baduk.network
 AutoUpdate=registry
 Notify=true

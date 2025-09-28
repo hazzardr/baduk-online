@@ -47,7 +47,7 @@ db/start:
           -p 5432:5432 \
           -e POSTGRES_USER=postgres \
           -e POSTGRES_PASSWORD=postgres \
-          -e POSTGRES_DB=go_baduk \
+          -e POSTGRES_DB=baduk \
           -v postgres_data:/var/lib/postgresql/data \
           --restart unless-stopped \
           --replace \
