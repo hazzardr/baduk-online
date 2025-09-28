@@ -15,8 +15,8 @@
   vars_files:
     - vars/vault.yml
   vars:
-    ansible_become_pass: "{{ vault_caddy_become_pass }}"
+    ansible_become_pass: "{{ vault_baduk_become_pass }}"
   roles:
     - proxy
-  remote_user: caddy
+  remote_user: baduk
   tags: proxy

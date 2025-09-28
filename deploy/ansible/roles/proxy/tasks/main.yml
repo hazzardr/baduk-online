@@ -1,4 +1,10 @@
 ---
+- name: Ensure systemd User Dir exists
+  file:
+    path: "~/.config/systemd/user"
+    state: directory
+    mode: '0755'
+    
 - name: Ensure Socket Configuration
   template:
     src: caddy.socket.j2
