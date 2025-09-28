@@ -21,28 +21,15 @@
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
-        Content-Security-Policy "default-src 'self';"
         X-XSS-Protection "1; mode=block"
-        defer
     }
 
-    reverse_proxy 0.0.0.0:{{ baduk_port }} {
+    reverse_proxy 127.0.0.1:{{ baduk_port }} {
         header_up Host {host}
         header_up X-Real-IP {remote}
         header_up X-Forwarded-For {remote}
         header_up X-Forwarded-Proto {scheme}
-
-        # Global timeout
-        timeout 30s
     }
-
-    # Trust Cloudflare headers
-    trusted_proxies cloudflare
-
-    @cloudflare-only {
-        not cf-ray *
-    }
-    respond @cloudflare-only 403
 }
 
 http://*.baduk.online, http://baduk.online {
