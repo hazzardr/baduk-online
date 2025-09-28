@@ -11,9 +11,14 @@
     state: directory
     mode: '0700'
 
-- name: Deploy service container
+- name: Deploy db volume 
   template:
-    src: baduk.container.j2
-    dest: "~/.config/containers/systemd/baduk.container"
+    src: postgres-data.volume.j2
+    dest: "~/.config/containers/systemd/postgres-data.volume"
     mode: '0600'
 
+- name: Deploy db container
+  template:
+    src: postgres.container.j2
+    dest: "~/.config/containers/systemd/postgres.container"
+    mode: '0600'

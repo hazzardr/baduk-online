@@ -1,6 +1,7 @@
 [Unit]
 Description=Caddy Reverse Proxy
-Requires=caddy.socket
+Requires=caddy.socket 
+Requires=baduk.service
 
 [Container]
 ContainerName=caddy
@@ -9,8 +10,6 @@ Network=caddy.network
 Volume=/home/baduk/caddy_etc/Caddyfile:/etc/caddy/Caddyfile:Z
 Volume=caddy-config.volume:/config:Z
 Volume=caddy-data.volume:/data:Z
-AutoUpdate=registry
-Notify=true
 
 HealthCmd=caddy version
 HealthInterval=10s

@@ -13,7 +13,11 @@ RUN CGO_ENABLED=0 \
 
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates
+# Add curl for container health checks
+RUN apk --no-cache add \
+    ca-certificates \
+    curl
+     
 WORKDIR /app
 
 COPY --from=build /go/bin/app /app/app

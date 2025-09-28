@@ -1,0 +1,16 @@
+[Unit]
+Description=Postgres
+
+[Container]
+Image=docker.io/library/postgres:18
+PublishPort=5432:5432
+Network=baduk.network
+EnvironmentFile=/etc/containers/postgres.env
+Volume=postgres-data:/var/lib/postgresql/data:Z
+
+[Service]
+Restart=always
+MemoryMax=4096M
+
+[Install]
+WantedBy=default.target

@@ -33,7 +33,7 @@
 - name: Deploy Caddy network
   template:
     src: caddy.network.j2
-    dest: "~/.config/containers/systemd/caddy.network"
+    dest: "~/.config/containers/systemd/baduk.network"
     mode: '0600'
 
 - name: Deploy Caddy config volume
