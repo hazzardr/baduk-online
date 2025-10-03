@@ -26,7 +26,7 @@ func (api *API) handleGetUserByEmail(w http.ResponseWriter, r *http.Request) {
 	api.writeJSON(w, 200, user, nil)
 }
 
-func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
+func (api *API) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name     string `json:"name"`
 		Email    string `json:"email"`

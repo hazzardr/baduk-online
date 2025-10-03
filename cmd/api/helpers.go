@@ -76,6 +76,7 @@ func (api *API) readJSON(w http.ResponseWriter, r *http.Request, inputStruct any
 }
 
 func (api *API) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
+	slog.Debug("bad request", "err", err)
 	api.errorResponse(w, r, http.StatusBadRequest, err.Error())
 }
 

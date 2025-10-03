@@ -51,7 +51,7 @@ type RegistrationEmailData struct {
 func (m *SESMailer) SendRegistrationEmail(ctx context.Context, user *data.User) error {
 	subject := "my brand new subject"
 	message := "hello world"
-	fromEmail := "no-reply.baduk.online"
+	fromEmail := "no-reply@baduk.online"
 	res, err := m.client.SendEmail(ctx, &ses.SendEmailInput{
 		Destination: &sesTypes.Destination{
 			ToAddresses: []string{user.Email},

@@ -28,11 +28,6 @@ clean:
 run:
 	go run .
 	
-.PHONY: db/migration/create ## create a migration script
-db/migration/create:
-	goose postgres $(POSTGRES_URL) -dir migrations create $(migrationName) sql
-
-	
 .PHONY: db/migration/status ## get the status of the db migrations
 db/migration/status:
 	goose postgres $(POSTGRES_URL) -dir migrations status

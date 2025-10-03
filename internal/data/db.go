@@ -8,8 +8,9 @@ import (
 )
 
 type Database struct {
-	Pool  *pgxpool.Pool
-	Users *userStore
+	Pool         *pgxpool.Pool
+	Users        *userStore
+	Registration *registrationStore
 }
 
 // UserStore handles transactions related to Users
@@ -32,6 +33,7 @@ func New(dsn string) (*Database, error) {
 	return &Database{
 		pool,
 		&userStore{db: pool},
+		&registrationStore{db: pool},
 	}, nil
 }
 

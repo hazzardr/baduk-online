@@ -1,10 +1,12 @@
 -- +goose Up
-CREATE TABLE IF NOT EXISTS tokens (
-    hash bytea PRIMARY KEY,
-    user_id bigint NOT NULL REFERENCES users ON DELETE CASCADE,
-    expiry timestamp(0) with time zone NOT NULL,
-    scope text NOT NULL
+CREATE TABLE sessions (
+	token TEXT PRIMARY KEY,
+	data BYTEA NOT NULL,
+	expiry TIMESTAMPTZ NOT NULL
 );
 
+CREATE INDEX sessions_expiry_idx ON sessions (expiry);
+
 -- +goose Down
-DROP TABLE IF EXISTS tokens;
+DROP INDEX IF EXISTS sessions_expiry_idx;
+DROP TABLE IF EXISTS sessions;
