@@ -55,7 +55,24 @@ deploy/bootstrap:
 		-i deploy/ansible/inventory \
 		--vault-password-file deploy/ansible/.bootstrap_vault_pass
 
+.PHONY: test ## run all tests
+test:
+	DOCKER_HOST=unix://$(XDG_RUNTIME_DIR)/podman/podman.sock \
+	TESTCONTAINERS_RYUK_DISABLED=true \
+	go test -v ./...
+
+.PHONY: tests/integration ## run integration tests
+tests/integration:
+	DOCKER_HOST=unix://$(XDG_RUNTIME_DIR)/podman/podman.sock \
+	TESTCONTAINERS_RYUK_DISABLED=true \
+	go test -v ./cmd/api -run Integration
+
 .PHONY: tests/smoke ## run smoke tests
 tests/smoke:
 	cd tests/smoke && k6 run users.js
 	
+.PHONY: tests/setup ## ensure podman socket is running
+tests/setup:
+	systemctl --user start podman.socket
+	systemctl --user status podman.socket
+
