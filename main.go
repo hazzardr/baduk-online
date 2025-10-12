@@ -35,6 +35,12 @@ func main() {
 	flag.StringVar(&cfg.dsn, "dsn", os.Getenv("POSTGRES_URL"), "Database URL")
 
 	flag.Parse()
+	
+	if cfg.dsn == "" {
+		slog.Error("database URL is required")
+		os.Exit(1)
+	}
+	
 	logger := log.NewWithOptions(os.Stderr, log.Options{
 		ReportCaller:    true,
 		ReportTimestamp: true,
@@ -51,7 +57,8 @@ func main() {
 
 	awsCfg, err := awsConfig.LoadDefaultConfig(context.Background())
 	if err != nil {
-		slog.Error("aws config not found", "err", err)
+		slog.Error("failed to load AWS config", "err", err)
+		os.Exit(1)
 	}
 	mailer := mail.NewSESMailer(awsCfg)
 	err = mailer.Ping()

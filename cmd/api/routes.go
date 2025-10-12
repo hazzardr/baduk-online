@@ -14,7 +14,7 @@ import (
 func (api *API) Routes() http.Handler {
 	sm := scs.New()
 	sm.Lifetime = 24 * time.Hour
-	sm.Cookie.Secure = true
+	sm.Cookie.Secure = api.environment == "production"
 	sm.Store = pgxstore.New(api.db.Pool)
 	r := chi.NewRouter()
 
@@ -27,6 +27,7 @@ func (api *API) Routes() http.Handler {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", api.handleHealthCheck)
+		r.Post("/users", api.handleCreateUser)
 		r.Get("/users/{email}", api.handleGetUserByEmail)
 	})
 	return r

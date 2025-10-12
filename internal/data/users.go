@@ -12,6 +12,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// User represents a user account in the system.
 type User struct {
 	ID        int       `json:"-"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
@@ -22,6 +23,7 @@ type User struct {
 	Version   int       `json:"-"`
 }
 
+// password holds both plaintext and bcrypt-hashed password values.
 type password struct {
 	plaintext *string
 	hash      []byte `db:"password_hash"`
@@ -52,17 +54,20 @@ func (p *password) Matches(plaintextPassword string) (bool, error) {
 	return true, nil
 }
 
+// ValidateEmail checks that an email address is provided and matches the expected format.
 func ValidateEmail(v *validator.Validator, email string) {
 	v.Check(email != "", "email", "must be provided")
 	v.Check(validator.Matches(email, validator.EmailRX), "email", "must be a valid email address")
 }
 
+// ValidatePasswordPlaintext checks that a plaintext password meets length requirements (8-72 characters).
 func ValidatePasswordPlaintext(v *validator.Validator, password string) {
 	v.Check(password != "", "password", "must be provided")
 	v.Check(len(password) >= 8, "password", "must be at least 8 characters long")
 	v.Check(len(password) <= 72, "password", "must not be more than 72 characters long")
 }
 
+// ValidateUser performs validation checks on a User struct, including name, email, and password.
 func ValidateUser(v *validator.Validator, user *User) {
 	v.Check(user.Name != "", "name", "must be provided")
 	v.Check(len(user.Name) <= 50, "name", "must not be more than 50 characters long")
@@ -78,6 +83,8 @@ func ValidateUser(v *validator.Validator, user *User) {
 	}
 }
 
+// Insert creates a new user in the database and populates the user's ID, CreatedAt, and Version fields.
+// Returns ErrDuplicateEmail if a user with the same email already exists.
 func (u *userStore) Insert(ctx context.Context, user *User) error {
 	query := `
 		INSERT INTO users (name, email, password_hash, validated)
@@ -85,7 +92,11 @@ func (u *userStore) Insert(ctx context.Context, user *User) error {
         RETURNING id, created_at, version`
 	c, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	_, err := u.db.Exec(c, query, user.Name, user.Email, user.Password.hash, user.Validated)
+	err := u.db.QueryRow(c, query, user.Name, user.Email, user.Password.hash, user.Validated).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.Version,
+	)
 	if err != nil {
 		var e *pgconn.PgError
 		if errors.As(err, &e) {
@@ -99,6 +110,8 @@ func (u *userStore) Insert(ctx context.Context, user *User) error {
 	return nil
 }
 
+// GetByEmail retrieves a user by their email address.
+// Returns ErrNoUserFound if no user exists with the given email.
 func (u *userStore) GetByEmail(ctx context.Context, email string) (*User, error) {
 	query := `
 		SELECT
@@ -117,7 +130,15 @@ func (u *userStore) GetByEmail(ctx context.Context, email string) (*User, error)
 	var user User
 	c, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	err := u.db.QueryRow(c, query, email).Scan(&user)
+	err := u.db.QueryRow(c, query, email).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.Name,
+		&user.Email,
+		&user.Password.hash,
+		&user.Validated,
+		&user.Version,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNoUserFound
@@ -126,6 +147,8 @@ func (u *userStore) GetByEmail(ctx context.Context, email string) (*User, error)
 	}
 	return &user, nil
 }
+// DeleteUser removes a user from the database by their email address.
+// Returns ErrNoUserFound if no user exists with the given email.
 func (u *userStore) DeleteUser(ctx context.Context, user *User) error {
 	query := `
 		DELETE

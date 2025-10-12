@@ -35,6 +35,7 @@ db/migration/status:
 .PHONY: db/migrate ## run database migrations
 db/migrate:
 	goose postgres $(POSTGRES_URL) -dir migrations up
+
  .PHONY: db/start ## start the database
 db/start:
 	podman run -d \
@@ -54,4 +55,7 @@ deploy/bootstrap:
 		-i deploy/ansible/inventory \
 		--vault-password-file deploy/ansible/.bootstrap_vault_pass
 
-
+.PHONY: tests/smoke ## run smoke tests
+tests/smoke:
+	cd tests/smoke && k6 run users.js
+	
