@@ -16,9 +16,15 @@
     src: postgres-data.volume.j2
     dest: "~/.config/containers/systemd/postgres-data.volume"
     mode: '0600'
+  notify:
+    - reload systemd user daemon
+    - restart postgres
 
 - name: Deploy db container
   template:
     src: postgres.container.j2
     dest: "~/.config/containers/systemd/postgres.container"
     mode: '0600'
+  notify:
+    - reload systemd user daemon
+    - restart postgres

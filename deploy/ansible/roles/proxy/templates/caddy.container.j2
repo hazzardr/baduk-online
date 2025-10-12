@@ -6,7 +6,7 @@ Requires=baduk.service
 [Container]
 ContainerName=caddy
 Image=ghcr.io/hazzardr/caddy:main
-Network=caddy.network
+Network=baduk.network
 Volume=/home/baduk/caddy_etc/Caddyfile:/etc/caddy/Caddyfile:Z
 Volume=caddy-config.volume:/config:Z
 Volume=caddy-data.volume:/data:Z

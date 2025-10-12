@@ -16,6 +16,9 @@
     src: caddy.socket.j2
     dest: "~/.config/systemd/user/caddy.socket"
     mode: '0644'
+  notify:
+    - reload systemd user daemon
+    - restart caddy socket
 
 - name: Ensure caddy_etc directory exists
   file:
@@ -29,33 +32,42 @@
     dest: "~/caddy_etc/Caddyfile"
     mode: '0644'
   become: no
+  notify:
+    - restart caddy
 
 - name: Deploy Caddy network
   template:
     src: caddy.network.j2
     dest: "~/.config/containers/systemd/baduk.network"
     mode: '0600'
+  notify:
+    - reload systemd user daemon
+    - restart caddy
 
 - name: Deploy Caddy config volume
   template:
     src: caddy-config.volume.j2
     dest: "~/.config/containers/systemd/caddy-config.volume"
     mode: '0600'
+  notify:
+    - reload systemd user daemon
+    - restart caddy
 
 - name: Deploy Caddy data volume
   template:
     src: caddy-data.volume.j2
     dest: "~/.config/containers/systemd/caddy-data.volume"
     mode: '0600'
+  notify:
+    - reload systemd user daemon
+    - restart caddy
 
 - name: Deploy Caddy container
   template:
     src: caddy.container.j2
     dest: "~/.config/containers/systemd/caddy.container"
     mode: '0600'
-
-- name: Reload user systemd daemon
-  systemd:
-    daemon_reload: yes
-    scope: user
+  notify:
+    - reload systemd user daemon
+    - restart caddy
 
