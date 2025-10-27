@@ -13,19 +13,24 @@
 
 ## Open Items
 
-### High Priority
+### Infrastructure
+
 - [ ] Add database migration task to Ansible service role
 - [ ] Deploy environment files (postgres.env, baduk_env/prod.yml) via Ansible templates
 - [ ] Fix Postgres version consistency (use 17.5 everywhere, not 18)
 - [ ] Verify health check endpoint accessibility in containers
+- [ ] Verify Dockerfile is correct
 
-### Medium Priority
-- [ ] Implement registration token verification endpoint
-- [ ] Wire up registration token in email sending
+### Features
+
+- [ ] Implement automated registration token verification endpoint
+- [ ] Implement manual registration token verification endpoint
+- [ ] Verify registration token in email sending logic
 - [ ] Add backup strategy for Postgres data
 - [ ] Document backup/restore procedures
 
 ### Low Priority
+
 - [ ] Add explicit network creation tasks in Ansible
 - [ ] Consider moving postgres.env to user space for consistency
 - [ ] Add more integration tests for edge cases

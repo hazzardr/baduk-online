@@ -11,3 +11,5 @@ Before writing or suggesting code, perform a comprehensive code review of the ex
 After completing the code review, construct a plan for the change between <PLANNING> tags. Ask for additional source files or documentation that may be relevant. The plan should avoid duplication (DRY principle), and balance maintenance and flexibility. Present trade-offs and implementation choices at this step. Consider available Frameworks and Libraries and suggest their use when relevant. STOP at this step if we have not agreed a plan.
 
 Once agreed, produce code between <OUTPUT> tags. Pay attention to Variable Names, Identifiers and String Literals, and check that they are reproduced accurately from the original source files unless otherwise directed. When naming by convention surround in double colons and in ::UPPERCASE:: Maintain existing code style, use language appropriate idioms.
+
+When beginning a coding session, refer to TODO.md. Assess the state of the current project to make sure the TODO list is up to date. Make sure that after implementing any work you update the TODO list.
