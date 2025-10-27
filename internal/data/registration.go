@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base32"
+	"errors"
 	"time"
 
 	"github.com/hazzardr/baduk-online/internal/validator"
@@ -72,8 +74,8 @@ func (r *registrationStore) Insert(ctx context.Context, token *RegistrationToken
 	return nil
 }
 
-// New creates a registration token and inserts it into the database, returning the plaintext token.
-func (r *registrationStore) New(ctx context.Context, userID int64, ttl time.Duration) (*RegistrationToken, error) {
+// NewToken creates a registration token and inserts it into the database, returning the plaintext token.
+func (r *registrationStore) NewToken(ctx context.Context, userID int64, ttl time.Duration) (*RegistrationToken, error) {
 	t, err := generateRegistrationToken(userID, ttl)
 	if err != nil {
 		return nil, err
@@ -83,8 +85,8 @@ func (r *registrationStore) New(ctx context.Context, userID int64, ttl time.Dura
 	return t, err
 }
 
-// DeleteRegistrationTokensForUser removes all registration tokens associated with a user.
-func (r *registrationStore) DeleteRegistrationTokensForUser(ctx context.Context, userID int64) error {
+// RevokeTokensForUser removes all registration tokens associated with a user.
+func (r *registrationStore) RevokeTokensForUser(ctx context.Context, userID int64) error {
 	query := `
 		DELETE FROM registration
 		WHERE user_id = $1
@@ -95,4 +97,56 @@ func (r *registrationStore) DeleteRegistrationTokensForUser(ctx context.Context,
 
 	_, err := r.db.Exec(c, query, userID)
 	return err
+}
+
+// GetUserFromToken retrieves any user associated with a valid, non-expired token
+func (r *registrationStore) GetUserFromToken(ctx context.Context, plaintextToken string) (*User, error) {
+	query := `
+		SELECT
+			u.id,
+			u.created_at,
+			u.name,
+			u.email,
+			u.password_hash,
+			u.validated,
+			u.version
+		FROM
+			users u
+		INNER JOIN
+			registration r
+		ON
+			u.id = r.user_id
+		WHERE
+			r.hash = $1
+		AND
+			r.expiry > $2
+	`
+
+	tokenHash := sha256.Sum256([]byte(plaintextToken))
+
+	// Have to do some annoying magic to convert array -> slice for the pgx driver
+	args := []any{tokenHash[:], time.Now()}
+
+	c, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	var user User
+	err := r.db.QueryRow(c, query, args...).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.Name,
+		&user.Email,
+		&user.Password.hash,
+		&user.Validated,
+		&user.Version,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNoUserFound
+		} else {
+			return nil, err
+		}
+	}
+
+	return &user, nil
 }

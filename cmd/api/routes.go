@@ -21,8 +21,9 @@ func (api *API) Routes() http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", api.handleHealthCheck)
 		r.Post("/users", api.handleCreateUser)
-		r.Get("/users/{email}", api.handleGetUserByEmail)
 		r.Post("/users/register", api.handleSendRegistrationEmail)
+		r.Put("/users/activated", api.handleRegisterUser)
+		r.Get("/user", api.handleGetLoggedInUser)
 	})
 	return r
 }

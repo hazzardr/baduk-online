@@ -148,9 +148,9 @@ func (u *userStore) GetByEmail(ctx context.Context, email string) (*User, error)
 	return &user, nil
 }
 
-// DeleteUser removes a user from the database by their email address.
+// Delete removes a user from the database by their email address.
 // Returns ErrNoUserFound if no user exists with the given email.
-func (u *userStore) DeleteUser(ctx context.Context, user *User) error {
+func (u *userStore) Delete(ctx context.Context, user *User) error {
 	query := `
 		DELETE
 		FROM users
@@ -162,6 +162,52 @@ func (u *userStore) DeleteUser(ctx context.Context, user *User) error {
 	defer cancel()
 	result, err := u.db.Exec(c, query, user.Email)
 	if err != nil {
+		return err
+	}
+
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNoUserFound
+	}
+
+	return nil
+}
+
+// Update will update the given user
+func (u *userStore) Update(ctx context.Context, user *User) error {
+	query := `
+		UPDATE 	users
+		SET
+			u.name = $1,
+			u.email = $2,
+			u.password_hash = $3,
+			u.validated = $4,
+			u.version = u.version + 1
+		WHERE
+			u.id = $5
+		AND
+			u.version = $6
+		RETURNING
+			u.version
+		;
+	`
+	c, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	result, err := u.db.Exec(
+		c,
+		query,
+		user.Name,
+		user.Email,
+		user.Password.hash,
+		user.Validated,
+		user.ID,
+		user.Version,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// We couldn't find the record with that version, means it was already updated concurrently
+			return ErrEditConflict
+		}
 		return err
 	}
 

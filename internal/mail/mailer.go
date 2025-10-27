@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -18,8 +19,11 @@ import (
 )
 
 const (
+	//RegistrationTokenTTL is the amount of time a registration token is valid for
 	RegistrationTokenTTL time.Duration = 15 * time.Minute
-	SendEmailTimeout     time.Duration = 10 * time.Second
+
+	//SendEmailTimeout is the amount of time we give to our email sending process
+	SendEmailTimeout time.Duration = 10 * time.Second
 )
 
 // templateFS embeds email templates from the templates directory.
@@ -75,7 +79,11 @@ func (m *SESMailer) SendRegistrationEmail(parentCtx context.Context, user *data.
 		return err
 	}
 
-	token, err := m.db.Registration.New(ctx, int64(user.ID), RegistrationTokenTTL)
+	err = m.db.Registration.RevokeTokensForUser(ctx, int64(user.ID))
+	if err != nil {
+		return errors.Join(errors.New("failed to delete existing registration tokens for user"), err)
+	}
+	token, err := m.db.Registration.NewToken(ctx, int64(user.ID), RegistrationTokenTTL)
 	if err != nil {
 		return err
 	}

@@ -24,12 +24,14 @@
 
 ### Features
 
-- [ ] Implement automated registration token verification endpoint
-- [ ] Implement manual registration token verification endpoint
+- [ ] Verify registration token verification endpoint and accompanying logic in cmd/api/users.go
 - [ ] Verify register user flow in internal/data/registration.go
+
+### Tests
+
+- [ ] Add integration tests to cmd/api/users_test.go for the registration workflow
 
 ### Low Priority
 
 - [ ] Add explicit network creation tasks in Ansible
 - [ ] Consider moving postgres.env to user space for consistency
-- [ ] Add more integration tests for edge cases

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"strings"
 
@@ -24,9 +25,7 @@ func (api *API) writeJSON(w http.ResponseWriter, status int, data any, headers h
 		return err
 	}
 
-	for key, val := range headers {
-		w.Header()[key] = val
-	}
+	maps.Copy(w.Header(), headers)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -111,6 +110,11 @@ func (api *API) serverErrorResponse(w http.ResponseWriter, r *http.Request, err 
 
 func (api *API) failedValidationResponse(w http.ResponseWriter, r *http.Request, errors map[string]string) {
 	api.errorResponse(w, r, http.StatusUnprocessableEntity, errors)
+}
+
+func (api *API) dataConflictResponse(w http.ResponseWriter, r *http.Request, err error) {
+	slog.Warn("tried to modify stale data", "err", err)
+	api.errorResponse(w, r, http.StatusConflict, "tried to modify stale data, please refresh")
 }
 
 // Begin sync helpers

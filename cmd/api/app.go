@@ -32,3 +32,10 @@ func NewAPI(environment, version string, db *data.Database, mailer mail.Mailer) 
 		sessionManager: sm,
 	}
 }
+
+// Shutdown allows the caller to wait for the background tasks in our application to be completed before returning
+func (api *API) Shutdown(graceful bool) {
+	if graceful {
+		api.wg.Wait()
+	}
+}

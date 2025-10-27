@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
@@ -35,12 +37,12 @@ func main() {
 	flag.StringVar(&cfg.dsn, "dsn", os.Getenv("POSTGRES_URL"), "Database URL")
 
 	flag.Parse()
-	
+
 	if cfg.dsn == "" {
 		slog.Error("database URL is required")
 		os.Exit(1)
 	}
-	
+
 	logger := log.NewWithOptions(os.Stderr, log.Options{
 		ReportCaller:    true,
 		ReportTimestamp: true,
@@ -74,7 +76,26 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 	}
 
+	errs := make(chan error)
+	go func() {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		s := <-quit
+		slog.Info("shutting down server", "signal", s.String())
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		err = srv.Shutdown(ctx)
+		if err != nil {
+			errs <- err
+		}
+
+		api.Shutdown(true)
+		errs <- nil
+	}()
+
 	slog.Info("starting server", "address", srv.Addr, "env", cfg.env)
-	_ = srv.ListenAndServe()
+	err = srv.ListenAndServe()
 	os.Exit(0)
 }
