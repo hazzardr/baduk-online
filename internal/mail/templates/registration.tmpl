@@ -44,11 +44,11 @@
 </head>
 <body>
     <div class="header">
-        <h1>Welcome to Go-Baduk!</h1>
+        <h1>Welcome to Baduk.Online!</h1>
     </div>
     <div class="content">
         <h2>Hello {{.Name}},</h2>
-        <p>Thank you for registering with Go-Baduk! We're excited to have you join our community of Go enthusiasts.</p>
+        <p>Thank you for registering with us!</p>
         
         <p>Your account has been successfully created with the email address: <strong>{{.Email}}</strong></p>
         
@@ -56,12 +56,11 @@
         
         <a href="{{.LoginURL}}" class="button">Start Playing</a>
         
-        <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
-        
         <p>Welcome aboard!</p>
         <p>The Go-Baduk Team</p>
     </div>
     <div class="footer">
+        <p>You may also register your email address by navigating to https://verify.baduk.online and entering the following code manually: {{.Token}}</p>
         <p>This email was sent to {{.Email}}. If you didn't create an account, please ignore this email.</p>
     </div>
 </body>
