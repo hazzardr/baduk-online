@@ -19,6 +19,7 @@ import (
 
 const (
 	RegistrationTokenTTL time.Duration = 15 * time.Minute
+	SendEmailTimeout     time.Duration = 10 * time.Second
 )
 
 // templateFS embeds email templates from the templates directory.
@@ -45,7 +46,7 @@ func NewSESMailer(awsCfg aws.Config) *SESMailer {
 
 // Ping verifies the SES client can connect to AWS by listing email identities.
 func (m *SESMailer) Ping() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), SendEmailTimeout)
 	defer cancel()
 	_, err := m.client.ListEmailIdentities(ctx, nil)
 	if err != nil {
@@ -65,7 +66,7 @@ type RegistrationEmailData struct {
 
 // SendRegistrationEmail sends an email with a verification code and redirect for account activation.
 func (m *SESMailer) SendRegistrationEmail(parentCtx context.Context, user *data.User) error {
-	ctx, cancel := context.WithTimeout(parentCtx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(parentCtx, SendEmailTimeout)
 	defer cancel()
 	subject := "Please verify your baduk.online account"
 	fromEmail := "no-reply@baduk.online"

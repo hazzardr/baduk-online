@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+
+	"github.com/hazzardr/baduk-online/internal/data"
 )
 
 var OneMB int64 = 1_048_576
@@ -91,11 +93,52 @@ func (api *API) errorResponse(w http.ResponseWriter, r *http.Request, status int
 	}
 }
 
+func (api *API) unauthenticatedResponse(w http.ResponseWriter, r *http.Request) {
+	resp := &errorResponse{
+		Error: "user must be authenticated to perform this function",
+	}
+	err := api.writeJSON(w, http.StatusUnauthorized, resp, nil)
+	if err != nil {
+		slog.Error(err.Error(), "method", r.Method, "uri", r.URL.RequestURI())
+		w.WriteHeader(http.StatusUnauthorized)
+	}
+}
+
 func (api *API) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	slog.Error("internal server error", "method", r.Method, "uri", r.URL.RequestURI(), "error", err.Error())
+	slog.Error("internal server error", "method", r.Method, "uri", r.URL.RequestURI(), "error", err)
 	api.errorResponse(w, r, http.StatusInternalServerError, "internal server error")
 }
 
 func (api *API) failedValidationResponse(w http.ResponseWriter, r *http.Request, errors map[string]string) {
 	api.errorResponse(w, r, http.StatusUnprocessableEntity, errors)
+}
+
+// Begin sync helpers
+
+// background will launch the given function on a background goRoutine with recovery handlers
+func (api *API) background(fn func()) {
+	withRecoverPanic := func(caller func()) {
+		defer func() {
+			pv := recover()
+			if pv != nil {
+				slog.Error("error executing function", "panic", fmt.Sprintf("%v", pv))
+			}
+		}()
+		caller()
+	}
+	api.wg.Go(func() {
+		withRecoverPanic(fn)
+	})
+}
+
+// Begin session helpers
+
+func (api *API) getUserFromContext(r *http.Request) (*data.User, error) {
+	exists := api.sessionManager.Exists(r.Context(), string(userContextKey))
+	if !exists {
+		return nil, errUserUnauthenticated
+	}
+	email := api.sessionManager.GetString(r.Context(), string(userContextKey))
+	user, err := api.db.Users.GetByEmail(r.Context(), email)
+	return user, err
 }

@@ -17,17 +17,16 @@
 
 - [ ] Add database migration task to Ansible service role
 - [ ] Deploy environment files (postgres.env, baduk_env/prod.yml) via Ansible templates
-- [ ] Fix Postgres version consistency (use 17.5 everywhere, not 18)
 - [ ] Verify health check endpoint accessibility in containers
 - [ ] Verify Dockerfile is correct
+- [ ] Add backup strategy for Postgres data
+- [ ] Document backup/restore procedures
 
 ### Features
 
 - [ ] Implement automated registration token verification endpoint
 - [ ] Implement manual registration token verification endpoint
-- [ ] Verify registration token in email sending logic
-- [ ] Add backup strategy for Postgres data
-- [ ] Document backup/restore procedures
+- [ ] Verify register user flow in internal/data/registration.go
 
 ### Low Priority
 

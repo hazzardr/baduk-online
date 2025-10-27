@@ -26,6 +26,7 @@ func (api *API) handleGetUserByEmail(w http.ResponseWriter, r *http.Request) {
 	api.writeJSON(w, 200, user, nil)
 }
 
+// handleCreateUser will create a user in the database and attempt to send a registration email asynchronously
 func (api *API) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name     string `json:"name"`
@@ -66,19 +67,35 @@ func (api *API) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	err = api.mailer.SendRegistrationEmail(r.Context(), user)
-	if err != nil {
-		deleteErr := api.db.Users.DeleteUser(r.Context(), user)
-		if deleteErr != nil {
-			slog.Error("failed to remove user after registration email fail. Likely in bad state", "user", user, "emailErr", err, "deleteErr", deleteErr)
-		}
-		api.serverErrorResponse(w, r, err)
-		return
-	}
 	err = api.writeJSON(w, http.StatusCreated, user, nil)
 	if err != nil {
 		api.serverErrorResponse(w, r, err)
+		return
 	}
 
+	api.background(func() {
+		err = api.mailer.SendRegistrationEmail(r.Context(), user)
+		if err != nil {
+			slog.Error("failed to send registration email", "user", user.Email, "err", err)
+		}
+	})
+}
+
+// handleSendRegistrationEmail sends a registration email based on the email address in the payload
+func (api *API) handleSendRegistrationEmail(w http.ResponseWriter, r *http.Request) {
+	user, err := api.getUserFromContext(r)
+	if err != nil {
+		if errors.Is(err, data.ErrNoUserFound) {
+			api.unauthenticatedResponse(w, r)
+		} else {
+			api.serverErrorResponse(w, r, errors.Join(errors.New("failed to retrieve user data from context"), err))
+		}
+		return
+	}
+	err = api.mailer.SendRegistrationEmail(r.Context(), user)
+	if err != nil {
+		slog.Error("failed to send registration email", "user", user.Email, "err", err)
+		api.serverErrorResponse(w, r, err)
+		return
+	}
 }

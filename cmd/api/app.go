@@ -1,22 +1,34 @@
 package api
 
 import (
+	"sync"
+	"time"
+
+	"github.com/alexedwards/scs/pgxstore"
+	"github.com/alexedwards/scs/v2"
 	"github.com/hazzardr/baduk-online/internal/data"
 	"github.com/hazzardr/baduk-online/internal/mail"
 )
 
 type API struct {
-	environment string
-	version     string
-	db          *data.Database
-	mailer      mail.Mailer
+	environment    string
+	version        string
+	db             *data.Database
+	mailer         mail.Mailer
+	sessionManager *scs.SessionManager
+	wg             sync.WaitGroup
 }
 
 func NewAPI(environment, version string, db *data.Database, mailer mail.Mailer) *API {
+	sm := scs.New()
+	sm.Lifetime = 24 * time.Hour
+	sm.Cookie.Secure = environment == "production"
+	sm.Store = pgxstore.New(db.Pool)
 	return &API{
-		environment: environment,
-		version:     version,
-		db:          db,
-		mailer:      mailer,
+		environment:    environment,
+		version:        version,
+		db:             db,
+		mailer:         mailer,
+		sessionManager: sm,
 	}
 }

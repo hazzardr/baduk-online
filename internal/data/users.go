@@ -147,6 +147,7 @@ func (u *userStore) GetByEmail(ctx context.Context, email string) (*User, error)
 	}
 	return &user, nil
 }
+
 // DeleteUser removes a user from the database by their email address.
 // Returns ErrNoUserFound if no user exists with the given email.
 func (u *userStore) DeleteUser(ctx context.Context, user *User) error {

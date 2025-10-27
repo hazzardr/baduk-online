@@ -4,23 +4,16 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/alexedwards/scs/v2"
-
-	"github.com/alexedwards/scs/pgxstore"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 func (api *API) Routes() http.Handler {
-	sm := scs.New()
-	sm.Lifetime = 24 * time.Hour
-	sm.Cookie.Secure = api.environment == "production"
-	sm.Store = pgxstore.New(api.db.Pool)
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(sm.LoadAndSave)
+	r.Use(api.sessionManager.LoadAndSave)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(10 * time.Second))
@@ -29,6 +22,7 @@ func (api *API) Routes() http.Handler {
 		r.Get("/health", api.handleHealthCheck)
 		r.Post("/users", api.handleCreateUser)
 		r.Get("/users/{email}", api.handleGetUserByEmail)
+		r.Post("/users/register", api.handleSendRegistrationEmail)
 	})
 	return r
 }
