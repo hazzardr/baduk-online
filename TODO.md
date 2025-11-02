@@ -10,6 +10,16 @@
 - ✅ Updated GitHub Actions workflows to run integration tests
 - ✅ Fixed Ansible deployment: unified network configuration (baduk.network)
 - ✅ Added systemd handlers for proper service reload/restart
+- ✅ Fixed bug in handleRegisterUser (missing pointer in readJSON call)
+- ✅ Fixed SQL bug in users.Update (removed incorrect table aliases)
+- ✅ Verified registration token verification endpoint in cmd/api/users.go
+- ✅ Verified register user flow in internal/data/registration.go
+- ✅ Added comprehensive integration tests for registration token workflow
+  - Complete registration workflow (create user → activate with token)
+  - Invalid token rejection
+  - Token length validation
+  - Empty token validation
+  - Token revocation after successful activation
 
 ## Open Items
 
@@ -21,15 +31,6 @@
 - [ ] Verify Dockerfile is correct
 - [ ] Add backup strategy for Postgres data
 - [ ] Document backup/restore procedures
-
-### Features
-
-- [ ] Verify registration token verification endpoint and accompanying logic in cmd/api/users.go
-- [ ] Verify register user flow in internal/data/registration.go
-
-### Tests
-
-- [ ] Add integration tests to cmd/api/users_test.go for the registration workflow
 
 ### Low Priority
 

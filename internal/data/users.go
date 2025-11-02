@@ -178,22 +178,22 @@ func (u *userStore) Update(ctx context.Context, user *User) error {
 	query := `
 		UPDATE 	users
 		SET
-			u.name = $1,
-			u.email = $2,
-			u.password_hash = $3,
-			u.validated = $4,
-			u.version = u.version + 1
+			name = $1,
+			email = $2,
+			password_hash = $3,
+			validated = $4,
+			version = version + 1
 		WHERE
-			u.id = $5
+			id = $5
 		AND
-			u.version = $6
+			version = $6
 		RETURNING
-			u.version
+			version
 		;
 	`
 	c, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	result, err := u.db.Exec(
+	err := u.db.QueryRow(
 		c,
 		query,
 		user.Name,
@@ -202,18 +202,12 @@ func (u *userStore) Update(ctx context.Context, user *User) error {
 		user.Validated,
 		user.ID,
 		user.Version,
-	)
+	).Scan(&user.Version)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			// We couldn't find the record with that version, means it was already updated concurrently
 			return ErrEditConflict
 		}
 		return err
-	}
-
-	rowsAffected := result.RowsAffected()
-	if rowsAffected == 0 {
-		return ErrNoUserFound
 	}
 
 	return nil

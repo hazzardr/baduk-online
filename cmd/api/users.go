@@ -102,7 +102,7 @@ func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Token string `json:"token"`
 	}
-	err := api.readJSON(w, r, input)
+	err := api.readJSON(w, r, &input)
 	if err != nil {
 		api.badRequestResponse(w, r, err)
 		return
