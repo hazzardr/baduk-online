@@ -11,6 +11,20 @@
     state: directory
     mode: '0700'
 
+- name: Ensure baduk_env directory exists
+  file:
+    path: "~/baduk_env"
+    state: directory
+    mode: '0700'
+
+- name: Deploy application environment file
+  template:
+    src: prod.yml.j2
+    dest: "~/baduk_env/prod.yml"
+    mode: '0600'
+  notify:
+    - restart baduk
+
 - name: Deploy service container
   template:
     src: baduk.container.j2
@@ -19,4 +33,22 @@
   notify:
     - reload systemd user daemon
     - restart baduk
+
+- name: Run database migrations
+  containers.podman.podman_container:
+    name: baduk-migrate
+    image: ghcr.io/hazzardr/baduk-online:main
+    state: started
+    detach: false
+    rm: true
+    network: baduk.network
+    env_file: "~/baduk_env/prod.yml"
+    command: ["goose", "-dir", "/app/migrations", "postgres", "{{ postgres_connection_string }}", "up"]
+  register: migration_result
+  failed_when: migration_result.rc != 0
+
+- name: Display migration output
+  debug:
+    var: migration_result.stdout_lines
+  when: migration_result.stdout_lines is defined
 

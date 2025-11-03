@@ -11,6 +11,22 @@
     state: directory
     mode: '0700'
 
+- name: Ensure /etc/containers directory exists
+  become: true
+  file:
+    path: "/etc/containers"
+    state: directory
+    mode: '0755'
+
+- name: Deploy postgres environment file
+  become: true
+  template:
+    src: postgres.env.j2
+    dest: "/etc/containers/postgres.env"
+    mode: '0600'
+  notify:
+    - restart postgres
+
 - name: Deploy db volume 
   template:
     src: postgres-data.volume.j2

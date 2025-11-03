@@ -2,24 +2,7 @@
 
 ## Completed Today
 
-- ✅ Set up testcontainers integration tests with Podman
-- ✅ Configured Makefile with proper environment variables for tests
-- ✅ Added database migrations to test setup using goose
-- ✅ Created mock mailer for testing
-- ✅ Implemented comprehensive user registration integration tests
-- ✅ Updated GitHub Actions workflows to run integration tests
-- ✅ Fixed Ansible deployment: unified network configuration (baduk.network)
-- ✅ Added systemd handlers for proper service reload/restart
-- ✅ Fixed bug in handleRegisterUser (missing pointer in readJSON call)
-- ✅ Fixed SQL bug in users.Update (removed incorrect table aliases)
-- ✅ Verified registration token verification endpoint in cmd/api/users.go
-- ✅ Verified register user flow in internal/data/registration.go
-- ✅ Added comprehensive integration tests for registration token workflow
-  - Complete registration workflow (create user → activate with token)
-  - Invalid token rejection
-  - Token length validation
-  - Empty token validation
-  - Token revocation after successful activation
+- Started Infrastructure work but did not complete it (on second step)
 
 ## Open Items
 

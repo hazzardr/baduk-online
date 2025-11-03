@@ -3,3 +3,15 @@ ansible_python_interpreter: /usr/bin/python3
 
 # Backend
 baduk_port: 4000
+
+# Database
+postgres_user: baduk
+postgres_password: "{{ vault_postgres_password }}"
+postgres_db: baduk
+postgres_connection_string: "postgres://{{ postgres_user }}:{{ postgres_password }}@postgres:5432/{{ postgres_db }}?sslmode=disable"
+
+# AWS
+aws_region: "{{ vault_aws_region }}"
+aws_access_key_id: "{{ vault_aws_access_key_id }}"
+aws_secret_access_key: "{{ vault_aws_secret_access_key }}"
+
