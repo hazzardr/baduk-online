@@ -11,7 +11,7 @@ Network=baduk.network
 AutoUpdate=registry
 Notify=true
 
-HealthCmd=curl --fail http://localhost:{{ baduk_port }}/health || exit 1
+HealthCmd=curl --fail http://localhost:{{ baduk_port }}/api/v1/health || exit 1
 HealthInterval=30s
 HealthRetries=3
 HealthStartPeriod=5s
