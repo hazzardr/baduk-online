@@ -1,27 +1,28 @@
 # TODO
 
-## Completed Today
-
-- ✅ Set up testcontainers integration tests with Podman
-- ✅ Configured Makefile with proper environment variables for tests
-- ✅ Added database migrations to test setup using goose
-- ✅ Created mock mailer for testing
-- ✅ Implemented comprehensive user registration integration tests
-- ✅ Updated GitHub Actions workflows to run integration tests
-- ✅ Fixed Ansible deployment: unified network configuration (baduk.network)
-- ✅ Added systemd handlers for proper service reload/restart
-- ✅ Fixed bug in handleRegisterUser (missing pointer in readJSON call)
-- ✅ Fixed SQL bug in users.Update (removed incorrect table aliases)
-- ✅ Verified registration token verification endpoint in cmd/api/users.go
-- ✅ Verified register user flow in internal/data/registration.go
-- ✅ Added comprehensive integration tests for registration token workflow
-  - Complete registration workflow (create user → activate with token)
-  - Invalid token rejection
-  - Token length validation
-  - Empty token validation
-  - Token revocation after successful activation
-
 ## Open Items
+
+### Features
+
+#### Registration Security Improvements
+
+**High Priority:**
+- [ ] Add rate limiting (5 attempts/hour per IP) on activation endpoint (PUT /users/activated)
+- [ ] Move activation token from query params to POST body to prevent URL logging
+- [ ] Extend registration token TTL from 15 minutes to 30-60 minutes
+- [ ] Add rate limiting on user creation endpoint (POST /users) to prevent spam
+
+**Medium Priority:**
+- [ ] Log failed activation attempts for security auditing
+- [ ] Send "account activated" confirmation email after successful activation
+- [ ] Add CSRF protection to activation endpoint
+- [ ] Consider additional confirmation factor (email + explicit click confirmation)
+
+**Low Priority:**
+- [ ] Implement audit logging for security events (failed logins, activations, etc.)
+- [ ] Add maximum failed activation attempts per user with temporary lockout
+- [ ] Add notification when suspicious activation attempts detected
+- [ ] Provide user-facing way to invalidate/regenerate token if compromised
 
 ### Infrastructure
 

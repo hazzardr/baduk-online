@@ -62,7 +62,7 @@ func main() {
 		slog.Error("failed to load AWS config", "err", err)
 		os.Exit(1)
 	}
-	mailer := mail.NewSESMailer(awsCfg)
+	mailer := mail.NewSESMailer(awsCfg, db)
 	err = mailer.Ping()
 	if err != nil {
 		slog.Error("failed to initialize SES client", "err", err.Error())

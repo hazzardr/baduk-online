@@ -12,4 +12,4 @@ After completing the code review, construct a plan for the change between <PLANN
 
 Once agreed, produce code between <OUTPUT> tags. Pay attention to Variable Names, Identifiers and String Literals, and check that they are reproduced accurately from the original source files unless otherwise directed. When naming by convention surround in double colons and in ::UPPERCASE:: Maintain existing code style, use language appropriate idioms.
 
-When beginning a coding session, refer to TODO.md. Assess the state of the current project to make sure the TODO list is up to date. Make sure that after implementing any work you update the TODO list.
+When beginning a coding session, refer to ARCHITECTURE.md so that you properly understand the architecture of this application
