@@ -42,7 +42,7 @@ type SESMailer struct {
 	db     *data.Database
 }
 
-// NewSESMailer creates a new SESMailer instance with the provided AWS configuration.
+// NewSESMailer creates a new SESMailer instance with the provided AWS configuration and database.
 func NewSESMailer(awsCfg aws.Config, db *data.Database) *SESMailer {
 	ses := ses.NewFromConfig(awsCfg)
 	return &SESMailer{client: ses, db: db}

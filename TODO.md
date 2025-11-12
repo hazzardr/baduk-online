@@ -1,15 +1,28 @@
 # TODO
 
-## Completed Today
-
-- Started Infrastructure work but did not complete it (on second step)
-- Created missing postgres.env.j2 template for database role
-- Fixed health check endpoint path in container configuration
-- Verified Dockerfile builds successfully
-- Implemented PostgreSQL backup strategy with systemd timers
-- Created backup/restore documentation
-
 ## Open Items
+
+### Features
+
+#### Registration Security Improvements
+
+**High Priority:**
+- [ ] Add rate limiting (5 attempts/hour per IP) on activation endpoint (PUT /users/activated)
+- [ ] Move activation token from query params to POST body to prevent URL logging
+- [ ] Extend registration token TTL from 15 minutes to 30-60 minutes
+- [ ] Add rate limiting on user creation endpoint (POST /users) to prevent spam
+
+**Medium Priority:**
+- [ ] Log failed activation attempts for security auditing
+- [ ] Send "account activated" confirmation email after successful activation
+- [ ] Add CSRF protection to activation endpoint
+- [ ] Consider additional confirmation factor (email + explicit click confirmation)
+
+**Low Priority:**
+- [ ] Implement audit logging for security events (failed logins, activations, etc.)
+- [ ] Add maximum failed activation attempts per user with temporary lockout
+- [ ] Add notification when suspicious activation attempts detected
+- [ ] Provide user-facing way to invalidate/regenerate token if compromised
 
 ### Infrastructure
 
