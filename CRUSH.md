@@ -101,7 +101,24 @@ These are automatically set by the Makefile.
 ```bash
 # Bootstrap infrastructure with Ansible
 make deploy/bootstrap
+
+# Deploy all components
+make deploy/all
+
+# Deploy individual components
+make deploy/fedora   # System setup
+make deploy/proxy    # Caddy reverse proxy (container)
+make deploy/db       # PostgreSQL database (container)
+make deploy/service  # Baduk application (binary)
+
+# Build release binaries locally
+make build/release
 ```
+
+**Deployment Architecture**:
+- **Baduk app**: Binary deployment with systemd service
+- **PostgreSQL**: Container (podman quadlet)
+- **Caddy**: Container (podman quadlet)
 
 See `deploy/README.md` for deployment details.
 
@@ -495,17 +512,23 @@ All under `/api/v1`:
 
 ---
 
-## Docker/Containers
+## Deployment Architecture
 
-**Dockerfile**: Multi-stage build (golang:1.25-alpine → alpine:latest)
+**Baduk Application**: Binary deployment
+- Built in CI/CD pipeline (GitHub Actions)
+- Released as tarball with migrations and goose binary
+- Deployed to `/opt/baduk/`
+- Runs as systemd service under `baduk` user
+- Resource limits: 1GB memory, 512 tasks
 
-**Exposed Port**: 4000
+**Infrastructure Containers**: Podman quadlets
+- PostgreSQL 17.5 (container)
+- Caddy reverse proxy (container)
 
-**Build**: CGO disabled, Linux binary
-
-**Health Check**: curl available in image
-
-**Runtime**: Podman (not Docker) with systemd quadlets
+**Binary Build**: 
+- CGO disabled, static binary
+- GOEXPERIMENT=jsonv2
+- Multi-arch: amd64 and arm64
 
 ---
 
@@ -515,13 +538,26 @@ All under `/api/v1`:
 
 - `.github/workflows/test.yml` - Runs `go test -v ./...` on push/PR
 - `.github/workflows/golangci-lint.yml` - Linting with golangci-lint v2.4.0
-- `.github/workflows/docker-publish.yml` - Docker image publishing
+- `.github/workflows/build.yml` - Build and release binaries (amd64/arm64)
+
+**Releases**: Tarballs contain binary, goose, and migrations
 
 **Linter**: golangci-lint (no config file - uses defaults)
 
 ---
 
 ## Gotchas
+
+### Binary Deployment
+
+Application runs as systemd service at `/opt/baduk/`. Migrations run before service start using bundled goose binary.
+
+**Service management**:
+```bash
+sudo systemctl status baduk
+sudo systemctl restart baduk
+sudo journalctl -u baduk -f
+```
 
 ### Testcontainers with Podman
 
@@ -564,6 +600,10 @@ The application waits for background tasks to complete during shutdown. Always u
 ### Email Sending
 
 Email sending happens **asynchronously** after user creation. Failures are logged but don't fail the request. Registration emails contain a token with 15-minute TTL.
+
+### Container Network
+
+PostgreSQL runs in `baduk.network` podman network. The baduk binary connects via `postgres:5432` hostname (container name resolution).
 
 ---
 

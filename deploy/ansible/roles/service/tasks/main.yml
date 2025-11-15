@@ -1,68 +1,69 @@
 ---
-- name: Ensure systemd User Dir exists
+- name: Ensure baduk application directory exists
+  become: true
   file:
-    path: "~/.config/systemd/user"
+    path: /opt/baduk
     state: directory
+    owner: baduk
+    group: baduk
     mode: '0755'
-  
-- name: Ensure user containers systemd directory exists
-  file:
-    path: "~/.config/containers/systemd"
-    state: directory
-    mode: '0700'
 
-- name: Ensure baduk_env directory exists
-  file:
-    path: "~/baduk_env"
-    state: directory
-    mode: '0700'
+- name: Detect system architecture
+  set_fact:
+    baduk_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
 
-- name: Deploy application environment file
-  template:
-    src: prod.yml.j2
-    dest: "~/baduk_env/prod.yml"
-    mode: '0600'
+- name: Download and extract baduk release
+  unarchive:
+    src: "https://github.com/hazzardr/baduk-online/releases/latest/download/baduk-linux-{{ baduk_arch }}.tar.gz"
+    dest: /opt/baduk
+    remote_src: yes
+    owner: baduk
+    group: baduk
+    mode: '0755'
+  become: true
   notify:
     - restart baduk
 
-- name: Login to GitHub Container Registry
-  containers.podman.podman_login:
-    username: "{{ vault_ghcr_username }}"
-    password: "{{ vault_ghcr_token }}"
-    registry: ghcr.io
-  when: vault_ghcr_username is defined and vault_ghcr_token is defined
-
-- name: Pull baduk-online image
-  containers.podman.podman_image:
-    name: ghcr.io/hazzardr/baduk-online:main
-    force: true
-  register: pull_result
-  failed_when: pull_result.failed | default(false)
-
-- name: Deploy service container
+- name: Deploy application environment file
+  become: true
   template:
-    src: baduk.container.j2
-    dest: "~/.config/containers/systemd/baduk.container"
+    src: baduk.env.j2
+    dest: /opt/baduk/baduk.env
+    owner: baduk
+    group: baduk
     mode: '0600'
   notify:
-    - reload systemd user daemon
     - restart baduk
 
 - name: Run database migrations
-  containers.podman.podman_container:
-    name: baduk-migrate
-    image: ghcr.io/hazzardr/baduk-online:main
-    state: started
-    detach: false
-    rm: true
-    network: baduk.network
-    env_file: "~/baduk_env/prod.yml"
-    command: ["goose", "-dir", "/app/migrations", "postgres", "{{ postgres_connection_string }}", "up"]
+  command:
+    cmd: /opt/baduk/goose -dir /opt/baduk/migrations postgres "{{ postgres_connection_string }}" up
+  become: true
+  become_user: baduk
   register: migration_result
-  failed_when: migration_result.failed | default(false) or (migration_result.container is defined and migration_result.container.State.ExitCode != 0)
+  changed_when: "'OK' in migration_result.stdout"
+  failed_when: migration_result.rc != 0
 
 - name: Display migration output
   debug:
     var: migration_result.stdout_lines
-  when: migration_result.stdout_lines is defined
 
+- name: Deploy baduk systemd service
+  become: true
+  template:
+    src: baduk.service.j2
+    dest: /etc/systemd/system/baduk.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd daemon
+    - restart baduk
+
+- name: Enable and start baduk service
+  become: true
+  systemd:
+    name: baduk
+    enabled: yes
+    state: started
+    daemon_reload: yes

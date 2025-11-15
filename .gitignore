@@ -47,3 +47,6 @@ bin/
 *vault.yml
 *vault.yaml
 inventory
+
+dist/
+.bak

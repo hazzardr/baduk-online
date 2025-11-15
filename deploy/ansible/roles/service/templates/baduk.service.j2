@@ -1,0 +1,25 @@
+[Unit]
+Description=Baduk Game Server
+After=postgres.service network-online.target
+Wants=network-online.target
+Requires=postgres.service
+
+[Service]
+Type=simple
+User=baduk
+Group=baduk
+WorkingDirectory=/opt/baduk
+EnvironmentFile=/opt/baduk/baduk.env
+ExecStart=/opt/baduk/baduk
+Restart=always
+RestartSec=5s
+
+MemoryMax=1024M
+TasksMax=512
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=baduk
+
+[Install]
+WantedBy=multi-user.target
