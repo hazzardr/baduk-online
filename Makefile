@@ -51,9 +51,43 @@ db/start:
 
 .PHONY: deploy/bootstrap ## bootstrap infrastructure
 deploy/bootstrap:
-	ansible-playbook deploy/ansible/bootstrap.yml \
+	uv run --with=ansible-core,passlib ansible-playbook deploy/ansible/bootstrap.yml \
 		-i deploy/ansible/inventory \
-		--vault-password-file deploy/ansible/.bootstrap_vault_pass
+		--vault-password-file deploy/ansible/.vault_pass
+		
+.PHONY: deploy/all ## deploy all components (fedora, proxy, db, service)
+deploy/all:
+	uv run --with=ansible-core,passlib ansible-playbook deploy/ansible/playbook.yml \
+		-i deploy/ansible/inventory \
+		--vault-password-file deploy/ansible/.vault_pass
+
+.PHONY: deploy/fedora ## deploy fedora role only
+deploy/fedora:
+	uv run --with=ansible-core,passlib ansible-playbook deploy/ansible/playbook.yml \
+		-i deploy/ansible/inventory \
+		--vault-password-file deploy/ansible/.vault_pass \
+		--tags fedora
+
+.PHONY: deploy/proxy ## deploy proxy role only
+deploy/proxy:
+	uv run --with=ansible-core,passlib ansible-playbook deploy/ansible/playbook.yml \
+		-i deploy/ansible/inventory \
+		--vault-password-file deploy/ansible/.vault_pass \
+		--tags proxy
+
+.PHONY: deploy/db ## deploy database role only
+deploy/db:
+	uv run --with=ansible-core,passlib ansible-playbook deploy/ansible/playbook.yml \
+		-i deploy/ansible/inventory \
+		--vault-password-file deploy/ansible/.vault_pass \
+		--tags db
+
+.PHONY: deploy/service ## deploy service role only
+deploy/service:
+	uv run --with=ansible-core,passlib ansible-playbook deploy/ansible/playbook.yml \
+		-i deploy/ansible/inventory \
+		--vault-password-file deploy/ansible/.vault_pass \
+		--tags service
 
 .PHONY: test ## run all tests
 test:
