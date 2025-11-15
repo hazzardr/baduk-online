@@ -519,7 +519,7 @@ All under `/api/v1`:
 
 **Baduk Application**: Binary deployment
 - Built in CI/CD pipeline (GitHub Actions)
-- Released as tarball with migrations
+- Migrations embedded in binary
 - Deployed to `/opt/baduk/`
 - Runs as systemd service under `baduk` user
 - Resource limits: 1GB memory, 512 tasks
@@ -544,7 +544,7 @@ All under `/api/v1`:
 - `.github/workflows/golangci-lint.yml` - Linting with golangci-lint v2.4.0
 - `.github/workflows/build.yml` - Build and release binaries (amd64/arm64)
 
-**Releases**: Tarballs contain binary and migrations
+**Releases**: Standalone binary tarballs (migrations embedded)
 
 **Linter**: golangci-lint (no config file - uses defaults)
 

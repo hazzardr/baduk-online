@@ -39,18 +39,16 @@ jobs:
           # Show sizes
           ls -lh dist/
       
-      - name: Create tarball with migrations
+      - name: Create release tarballs
         run: |
           mkdir -p dist/release-amd64 dist/release-arm64
           
           # amd64 release
           cp dist/baduk-linux-amd64 dist/release-amd64/baduk
-          cp -r migrations dist/release-amd64/
           tar -czf dist/baduk-linux-amd64.tar.gz -C dist/release-amd64 .
           
           # arm64 release
           cp dist/baduk-linux-arm64 dist/release-arm64/baduk
-          cp -r migrations dist/release-arm64/
           tar -czf dist/baduk-linux-arm64.tar.gz -C dist/release-arm64 .
           
           # Show tarball sizes

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -22,6 +23,9 @@ import (
 )
 
 const version = "0.1.0"
+
+//go:embed migrations/*.sql
+var embedMigrations embed.FS
 
 type config struct {
 	port    int
@@ -123,6 +127,8 @@ func runMigrations(dsn string) error {
 	if err := goose.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("failed to set dialect: %w", err)
 	}
+
+	goose.SetBaseFS(embedMigrations)
 
 	if err := goose.Up(db, "migrations"); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
