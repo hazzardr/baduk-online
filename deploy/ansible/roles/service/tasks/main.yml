@@ -37,11 +37,13 @@
 
 - name: Run database migrations
   command:
-    cmd: /opt/baduk/goose -dir /opt/baduk/migrations postgres "{{ postgres_connection_string }}" up
+    cmd: /opt/baduk/baduk -migrate
+  environment:
+    POSTGRES_URL: "{{ postgres_connection_string }}"
   become: true
   become_user: baduk
   register: migration_result
-  changed_when: "'OK' in migration_result.stdout"
+  changed_when: "'migrations completed successfully' in migration_result.stderr"
   failed_when: migration_result.rc != 0
 
 - name: Display migration output

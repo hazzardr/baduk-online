@@ -23,9 +23,6 @@ jobs:
         with:
           go-version: '^1.25'
       
-      - name: Install goose
-        run: go install github.com/pressly/goose/v3/cmd/goose@latest
-      
       - name: Build binaries
         run: |
           # Build for amd64
@@ -35,13 +32,6 @@ jobs:
           # Build for arm64
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 GOEXPERIMENT=jsonv2 \
             go build -o dist/baduk-linux-arm64 .
-          
-          # Copy goose binary
-          cp $(go env GOPATH)/bin/goose dist/goose-linux-amd64
-          
-          # Build goose for arm64
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
-            go build -o dist/goose-linux-arm64 github.com/pressly/goose/v3/cmd/goose
           
           # Make executable
           chmod +x dist/*
@@ -55,13 +45,11 @@ jobs:
           
           # amd64 release
           cp dist/baduk-linux-amd64 dist/release-amd64/baduk
-          cp dist/goose-linux-amd64 dist/release-amd64/goose
           cp -r migrations dist/release-amd64/
           tar -czf dist/baduk-linux-amd64.tar.gz -C dist/release-amd64 .
           
           # arm64 release
           cp dist/baduk-linux-arm64 dist/release-arm64/baduk
-          cp dist/goose-linux-arm64 dist/release-arm64/goose
           cp -r migrations dist/release-arm64/
           tar -czf dist/baduk-linux-arm64.tar.gz -C dist/release-arm64 .
           

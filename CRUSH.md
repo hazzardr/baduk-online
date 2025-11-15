@@ -67,6 +67,9 @@ make db/start
 # Run migrations (requires POSTGRES_URL env var)
 make db/migrate
 
+# Or run migrations via binary
+./bin/baduk.online -migrate
+
 # Check migration status
 make db/migration/status
 ```
@@ -516,10 +519,11 @@ All under `/api/v1`:
 
 **Baduk Application**: Binary deployment
 - Built in CI/CD pipeline (GitHub Actions)
-- Released as tarball with migrations and goose binary
+- Released as tarball with migrations
 - Deployed to `/opt/baduk/`
 - Runs as systemd service under `baduk` user
 - Resource limits: 1GB memory, 512 tasks
+- Migrations run via `-migrate` flag
 
 **Infrastructure Containers**: Podman quadlets
 - PostgreSQL 17.5 (container)
@@ -540,9 +544,16 @@ All under `/api/v1`:
 - `.github/workflows/golangci-lint.yml` - Linting with golangci-lint v2.4.0
 - `.github/workflows/build.yml` - Build and release binaries (amd64/arm64)
 
-**Releases**: Tarballs contain binary, goose, and migrations
+**Releases**: Tarballs contain binary and migrations
 
 **Linter**: golangci-lint (no config file - uses defaults)
+
+**CLI Flags**:
+- `-port` - API server port (default: 4000)
+- `-env` - Environment (development|production)
+- `-logFmt` - Log format (text|json)
+- `-dsn` - Database URL (default: POSTGRES_URL env var)
+- `-migrate` - Run database migrations and exit
 
 ---
 
@@ -550,13 +561,18 @@ All under `/api/v1`:
 
 ### Binary Deployment
 
-Application runs as systemd service at `/opt/baduk/`. Migrations run before service start using bundled goose binary.
+Application runs as systemd service at `/opt/baduk/`. Migrations run before service start using the `-migrate` flag.
 
 **Service management**:
 ```bash
 sudo systemctl status baduk
 sudo systemctl restart baduk
 sudo journalctl -u baduk -f
+```
+
+**Manual migration**:
+```bash
+/opt/baduk/baduk -migrate
 ```
 
 ### Testcontainers with Podman
