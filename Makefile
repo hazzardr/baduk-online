@@ -97,6 +97,10 @@ deploy/service:
 		--vault-password-file deploy/ansible/.vault_pass \
 		--tags service
 
+.PHONY: lint ## run golangci-lint
+lint:
+	golangci-lint run
+
 .PHONY: test ## run all tests
 test:
 	DOCKER_HOST=unix://$(XDG_RUNTIME_DIR)/podman/podman.sock \

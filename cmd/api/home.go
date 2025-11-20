@@ -1,7 +1,6 @@
 package api
 
 import (
-	"log/slog"
 	"net/http"
 
 	"github.com/hazzardr/baduk-online/frontend"
@@ -10,7 +9,6 @@ import (
 func (api *API) handleHome(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := frontend.ParseTemplates()
 	if err != nil {
-		slog.Error("failed to load templates", err)
 		http.Error(w, "Failed to load templates", http.StatusInternalServerError)
 		return
 	}
@@ -39,7 +37,6 @@ func (api *API) handleHome(w http.ResponseWriter, r *http.Request) {
 
 	err = tmpl.ExecuteTemplate(w, "index.gohtml", data)
 	if err != nil {
-		slog.Error("failed to render template", err)
 		api.errorResponse(w, r, http.StatusInternalServerError, "Failed to render template")
 		return
 	}
