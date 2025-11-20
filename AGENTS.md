@@ -5,14 +5,13 @@
 You are an expert in Web application development, including CSS, JavaScript, React, Node.JS and Markdown for frontend development, and Golang for backend development.
 
 - Review the conversation history for mistakes and avoid repeating them
-- The frontend is developed using the Mantine component library. Documentation can be found [here](https://mantine.dev/llms.txt)
+- The frontend is developed using vanilla HTML, CSS, and Javascript
 - Break things down into discrete changes, and suggest a small test after each stage to make sure things are on the right track
 - Only produce code to illustrate examples, or when directed to in the conversation. If you can answer without code, that is preferred
 - Request clarification for anything unclear or ambiguous
 - **Before writing or suggesting code**, perform a comprehensive code review of the existing code and describe how it works between `<CODE_REVIEW>` tags
 - **After completing the code review**, construct a plan for the change between `<PLANNING>` tags. Ask for additional source files or documentation that may be relevant. The plan should avoid duplication (DRY principle), and balance maintenance and flexibility. Present trade-offs and implementation choices at this step. Consider available Frameworks and Libraries and suggest their use when relevant. **STOP at this step if we have not agreed a plan**
 - **Once agreed**, produce code between `<OUTPUT>` tags. Pay attention to Variable Names, Identifiers and String Literals, and check that they are reproduced accurately from the original source files unless otherwise directed. When naming by convention surround in double colons and in `::UPPERCASE::`. Maintain existing code style, use language appropriate idioms
-- **When beginning a coding session**, refer to `ARCHITECTURE.md` to properly understand the architecture of this application
 
 ## Project Overview
 
@@ -31,15 +30,10 @@ You are an expert in Web application development, including CSS, JavaScript, Rea
 
 - **React 19** with TypeScript
 - **Vite** as build tool and dev server
-- **Mantine 8.3** component library and UI framework
 - **React Router 7** for client-side routing
 - **pnpm** package manager
 - **Vitest** for unit testing with React Testing Library
 - **Storybook** for component development
-
-**Architecture**: Review `ARCHITECTURE.md` at the start of any coding session to understand system design.
-
-**Current State**: Registration flow is implemented. Frontend has basic scaffold with Mantine setup. See `TODO.md` for upcoming security improvements (rate limiting, token security).
 
 ---
 
@@ -175,140 +169,6 @@ migrations/       - Goose SQL migrations
 deploy/           - Ansible playbooks and Terraform configs
 tests/smoke/      - k6 smoke tests
 ```
-
-### Frontend
-
-```
-frontend/
-  src/
-    main.tsx           - Application entry point
-    App.tsx            - Root component with MantineProvider
-    Router.tsx         - Route definitions with react-router-dom
-    theme.ts           - Mantine theme customization
-    pages/             - Page components (Home.page.tsx)
-    components/        - Reusable UI components
-      Welcome/         - Example component with tests and stories
-      ColorSchemeToggle/ - Light/dark mode switcher
-  test-utils/          - Testing utilities (render helpers)
-  index.html           - HTML entry point
-  vite.config.mjs      - Vite configuration
-  tsconfig.json        - TypeScript configuration
-  eslint.config.js     - ESLint configuration (mantine preset)
-  postcss.config.cjs   - PostCSS with mantine-preset-mantine
-  vitest.setup.mjs     - Vitest test setup
-  .storybook/          - Storybook configuration
-```
-
----
-
-## Frontend Architecture Patterns
-
-### Application Structure
-
-**Entry Point** (`main.tsx`):
-
-```tsx
-ReactDOM.createRoot(document.getElementById('root')!).render(<App />)
-```
-
-**Root Component** (`App.tsx`):
-
-```tsx
-<MantineProvider theme={theme}>
-  <Router />
-</MantineProvider>
-```
-
-**Router** (`Router.tsx`):
-
-Uses `createBrowserRouter` from react-router-dom v7:
-
-```tsx
-const router = createBrowserRouter([
-  { path: '/', element: <HomePage /> }
-]);
-```
-
-### Mantine Component Library
-
-**Documentation**: https://mantine.dev/llms.txt
-
-**Core Components** (already imported):
-
-- Layout: `Container`, `Group`, `Stack`, `Grid`, `Flex`
-- Typography: `Title`, `Text`, `Anchor`
-- Form: `TextInput`, `Button`, `Checkbox`, `Select`
-- Feedback: `Modal`, `Notification`, `Loader`
-- Navigation: `Tabs`, `Menu`, `NavLink`
-
-**Styling Approaches**:
-
-1. **CSS Modules**: `*.module.css` files (see `Welcome.module.css`)
-2. **Style Props**: Inline Mantine props (`mt`, `ta`, `c`, `maw`, etc.)
-3. **Theme**: Customize in `src/theme.ts` using `createTheme()`
-
-**Color Scheme**:
-
-- Uses `useMantineColorScheme()` hook
-- Supports light/dark/auto modes
-- Example: `ColorSchemeToggle.tsx`
-
-### Component Patterns
-
-**Component Structure**:
-
-```tsx
-// ComponentName.tsx - Main component
-export function ComponentName() { ... }
-
-// ComponentName.module.css - Scoped styles
-.title { ... }
-
-// ComponentName.test.tsx - Unit tests with Vitest + RTL
-import { render } from '@test-utils';
-
-// ComponentName.story.tsx - Storybook stories
-export default { component: ComponentName };
-```
-
-**Testing Pattern** (with custom render from `test-utils/`):
-
-```tsx
-import { render } from '@test-utils';
-
-test('renders component', () => {
-  const { getByText } = render(<Component />);
-  expect(getByText('text')).toBeInTheDocument();
-});
-```
-
-### TypeScript Configuration
-
-**Paths**:
-
-- `@/*` → `./src/*` (import components with `@/components/...`)
-- `@test-utils` → `./test-utils` (import test utilities)
-
-**Strict Mode**: Enabled with full type checking
-
-**Target**: ESNext with modern features
-
-### PostCSS & Styling
-
-**Plugins**:
-
-- `postcss-preset-mantine` - Mantine-specific transformations
-- `postcss-simple-vars` - CSS variables for breakpoints
-
-**Breakpoints**:
-
-- xs: 36em (576px)
-- sm: 48em (768px)
-- md: 62em (992px)
-- lg: 75em (1200px)
-- xl: 88em (1408px)
-
----
 
 ## Backend Architecture Patterns
 
@@ -561,80 +421,6 @@ func TestUserRegistrationIntegration(t *testing.T) {
 
 **Run**: `make tests/smoke` (requires running server on port 4000)
 
-### Frontend Unit Tests
-
-**Framework**: Vitest + React Testing Library + jsdom
-
-**Test Files**: `*.test.tsx` files co-located with components
-
-**Test Utilities**: Custom `render()` function in `test-utils/` wraps components with MantineProvider
-
-**Run Tests**:
-
-```bash
-cd frontend/
-pnpm vitest          # Run once
-pnpm vitest:watch    # Watch mode
-```
-
-**Test Pattern**:
-
-```tsx
-import { render, screen } from '@test-utils';
-import { ComponentName } from './ComponentName';
-
-describe('ComponentName', () => {
-  it('renders correctly', () => {
-    render(<ComponentName />);
-    expect(screen.getByText('text')).toBeInTheDocument();
-  });
-});
-```
-
-**Globals**: Vitest runs with `globals: true`, so no need to import `describe`, `it`, `expect`
-
-**Setup**: `vitest.setup.mjs` configures `@testing-library/jest-dom` matchers
-
----
-
-## Code Conventions
-
-### Frontend Conventions
-
-**Component Naming**:
-
-- PascalCase for components: `HomePage`, `ColorSchemeToggle`
-- File naming: `ComponentName.tsx` for components, `PageName.page.tsx` for pages
-- CSS Modules: `ComponentName.module.css`
-- Tests: `ComponentName.test.tsx`
-- Stories: `ComponentName.story.tsx`
-
-**Import Organization** (enforced by Prettier plugin):
-
-1. External dependencies (React, Mantine, etc.)
-2. Internal imports (components, utils, types)
-3. Relative imports
-4. CSS imports (should be first in the file)
-
-**Mantine Style Props** (use liberally):
-
-- Margin: `m`, `mt`, `mb`, `ml`, `mr`, `mx`, `my`
-- Padding: `p`, `pt`, `pb`, `pl`, `pr`, `px`, `py`
-- Text: `c` (color), `ta` (text-align), `fz` (font-size), `fw` (font-weight)
-- Layout: `w` (width), `h` (height), `maw` (max-width), `mah` (max-height)
-
-**File Organization**:
-
-- Pages in `src/pages/`
-- Reusable components in `src/components/`
-- Group related component files in folders (component + styles + tests + stories)
-
-**Code Style**:
-
-- ESLint config: `eslint-config-mantine` (includes React, TypeScript, a11y rules)
-- Prettier for formatting (configured with import sorting)
-- Stylelint for CSS files
-
 ### Backend Conventions
 
 ### Logging
@@ -755,31 +541,6 @@ All under `/api/v1`:
 - `github.com/testcontainers/testcontainers-go` - Testing with containers
 
 **Go Version**: 1.25 (uses `GOEXPERIMENT=jsonv2` in Docker build)
-
-### Frontend Libraries
-
-**Production Dependencies**:
-
-- `@mantine/core` (8.3.7) - UI component library
-- `@mantine/hooks` (8.3.7) - Mantine React hooks
-- `react` (19.2.0) - React library
-- `react-dom` (19.2.0) - React DOM renderer
-- `react-router-dom` (7.9.4) - Client-side routing
-
-**Development Dependencies**:
-
-- `vite` (7.1.9) - Build tool and dev server
-- `typescript` (5.9.3) - Type checking
-- `vitest` (4.0.0) - Unit testing framework
-- `@testing-library/react` (16.3.0) - Testing utilities
-- `@testing-library/jest-dom` (6.9.1) - DOM matchers
-- `eslint` (9.37.0) + `eslint-config-mantine` (4.0.3) - Linting
-- `prettier` (3.6.2) - Code formatting
-- `storybook` (10.0.0) - Component development
-- `postcss-preset-mantine` (1.18.0) - PostCSS transformations
-- `jsdom` (27.0.0) - DOM implementation for tests
-
-**Package Manager**: pnpm 9.15.4
 
 ---
 

@@ -11,6 +11,7 @@
 - [ ] Move activation token from query params to POST body to prevent URL logging
 - [ ] Extend registration token TTL from 15 minutes to 30-60 minutes
 - [ ] Add rate limiting on user creation endpoint (POST /users) to prevent spam
+- [ ] Add User Signup page for the frontend
 
 **Medium Priority:**
 - [ ] Log failed activation attempts for security auditing
