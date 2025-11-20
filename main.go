@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"embed"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/pressly/goose/v3"
 
 	"github.com/charmbracelet/log"
 	"github.com/hazzardr/baduk-online/cmd/api"
@@ -21,11 +24,15 @@ import (
 
 const version = "0.1.0"
 
+//go:embed migrations/*.sql
+var embedMigrations embed.FS
+
 type config struct {
-	port   int
-	env    string
-	logFmt string
-	dsn    string
+	port    int
+	env     string
+	logFmt  string
+	dsn     string
+	migrate bool
 }
 
 func main() {
@@ -35,6 +42,7 @@ func main() {
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|production)")
 	flag.StringVar(&cfg.logFmt, "logFmt", "text", "Log format (text|json)")
 	flag.StringVar(&cfg.dsn, "dsn", os.Getenv("POSTGRES_URL"), "Database URL")
+	flag.BoolVar(&cfg.migrate, "migrate", false, "Run database migrations and exit")
 
 	flag.Parse()
 
@@ -50,6 +58,15 @@ func main() {
 	})
 
 	slog.SetDefault(slog.New(logger))
+
+	if cfg.migrate {
+		if err := runMigrations(cfg.dsn); err != nil {
+			slog.Error("migration failed", "err", err)
+			os.Exit(1)
+		}
+		slog.Info("migrations completed successfully")
+		os.Exit(0)
+	}
 
 	db, err := data.New(cfg.dsn)
 	if err != nil {
@@ -98,4 +115,24 @@ func main() {
 	slog.Info("starting server", "address", srv.Addr, "env", cfg.env)
 	err = srv.ListenAndServe()
 	os.Exit(0)
+}
+
+func runMigrations(dsn string) error {
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("failed to set dialect: %w", err)
+	}
+
+	goose.SetBaseFS(embedMigrations)
+
+	if err := goose.Up(db, "migrations"); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	return nil
 }

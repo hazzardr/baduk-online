@@ -10,17 +10,6 @@
   remote_user: ansible
   tags: fedora
 
-- name: Ansible playbook for configuring Reverse Proxy
-  hosts: all
-  vars_files:
-    - vars/vault.yml
-  vars:
-    ansible_become_pass: "{{ vault_baduk_become_pass }}"
-  roles:
-    - proxy
-  remote_user: baduk
-  tags: proxy
-
 - name: Ansible playbook for configuring Database
   hosts: all
   vars_files:
@@ -31,6 +20,17 @@
     - db
   remote_user: baduk
   tags: db
+
+- name: Ansible playbook for configuring Reverse Proxy
+  hosts: all
+  vars_files:
+    - vars/vault.yml
+  vars:
+    ansible_become_pass: "{{ vault_baduk_become_pass }}"
+  roles:
+    - proxy
+  remote_user: baduk
+  tags: proxy
 
 - name: Ansible playbook for configuring Service
   hosts: all
