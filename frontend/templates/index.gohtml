@@ -1,0 +1,36 @@
+{{template "base.gohtml" .}}
+
+{{define "content"}}
+<section class="hero">
+    <div class="container">
+        <div class="hero-content">
+            <h2>Welcome to Go Baduk</h2>
+            <p class="subtitle">{{.Description}}</p>
+            <button class="btn btn-primary" onclick="handleGetStarted()">Get Started</button>
+        </div>
+    </div>
+</section>
+
+<section class="features">
+    <div class="container">
+        <h3>Features</h3>
+        <div class="feature-grid">
+            {{range .Features}}
+            <div class="feature-card">
+                <div class="feature-icon">{{.Icon}}</div>
+                <h4>{{.Title}}</h4>
+                <p>{{.Description}}</p>
+            </div>
+            {{end}}
+        </div>
+    </div>
+</section>
+
+<section class="cta">
+    <div class="container">
+        <h3>Ready to get started?</h3>
+        <p>Join us today and experience the difference.</p>
+        <button class="btn btn-secondary" onclick="handleSignUp()">Sign Up Now</button>
+    </div>
+</section>
+{{end}}
