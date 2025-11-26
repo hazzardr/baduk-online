@@ -10,6 +10,13 @@ on:
       - synchronize
       - reopened
 
+permissions:
+  contents: read
+  pull-requests: read
+  checks: write
+  security-events: write
+  actions: read
+
 jobs:
   test:
     name: Test
@@ -35,14 +42,54 @@ jobs:
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
 
-      - name: Build
-        run: go build -v ./...
-
       - name: Run go vet
         run: go vet ./...
 
-      - name: Run staticcheck
-        uses: dominikh/staticcheck-action@v1.4.0
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
         with:
-          version: "latest"
-          install-go: false
+          go-version: '1.25'
+          cache: false
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          args: --timeout=10m
+          only-new-issues: true
+          skip-cache: false
+          skip-save-cache: false
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: go
+          queries: +security-and-quality
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v4
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:go"

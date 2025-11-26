@@ -8,17 +8,9 @@ on:
     branches:
       - main
   schedule:
-    # Run security scans daily at 2 AM UTC
     - cron: '0 2 * * *'
 
 jobs:
-  gosec:
-    name: Security Scan (gosec)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
   govulncheck:
     name: Go Vulnerability Check
     runs-on: ubuntu-latest
