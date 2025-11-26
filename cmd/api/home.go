@@ -14,25 +14,7 @@ func (api *API) handleHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]interface{}{
-		"Title":       "Home - Go Baduk",
-		"Description": "Your modern web application built with Go",
-		"Features": []map[string]string{
-			{
-				"Icon":        "🚀",
-				"Title":       "Fast Performance",
-				"Description": "Built with Go for lightning-fast response times",
-			},
-			{
-				"Icon":        "🔒",
-				"Title":       "Secure",
-				"Description": "Security best practices built-in from the ground up",
-			},
-			{
-				"Icon":        "📱",
-				"Title":       "Responsive",
-				"Description": "Works seamlessly on desktop, tablet, and mobile devices",
-			},
-		},
+		"Title": "Home - baduk online",
 	}
 
 	err = tmpl.ExecuteTemplate(w, "index.gohtml", data)

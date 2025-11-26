@@ -1,4 +1,4 @@
-name: Release Please
+name: release-please
 
 on:
   push:
@@ -16,4 +16,4 @@ jobs:
       - uses: googleapis/release-please-action@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          release-type: go
+          release-type: go 

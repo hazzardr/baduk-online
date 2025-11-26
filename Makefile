@@ -20,14 +20,6 @@ update:
 build:
 	go build -o ./bin/$(PROJECT_NAME) .
 
-.PHONY: build/release ## build release binaries for linux amd64 and arm64
-build/release:
-	mkdir -p dist
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOEXPERIMENT=jsonv2 go build -o dist/baduk-linux-amd64 .
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 GOEXPERIMENT=jsonv2 go build -o dist/baduk-linux-arm64 .
-	chmod +x dist/baduk-*
-	ls -lh dist/
-
 .PHONY: clean ## delete generated code
 clean:
 	rm -rf bin/ dist/
@@ -113,10 +105,6 @@ tests/integration:
 	TESTCONTAINERS_RYUK_DISABLED=true \
 	go test -v ./cmd/api -run Integration
 
-.PHONY: tests/smoke ## run smoke tests
-tests/smoke:
-	cd tests/smoke && k6 run users.js
-	
 .PHONY: tests/setup ## ensure podman socket is running
 tests/setup:
 	systemctl --user start podman.socket
