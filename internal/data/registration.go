@@ -99,7 +99,7 @@ func (r *registrationStore) RevokeTokensForUser(ctx context.Context, userID int6
 	return err
 }
 
-// GetUserFromToken retrieves any user associated with a valid, non-expired token
+// GetUserFromToken retrieves any user associated with a valid, non-expired token.
 func (r *registrationStore) GetUserFromToken(ctx context.Context, plaintextToken string) (*User, error) {
 	query := `
 		SELECT
@@ -143,9 +143,8 @@ func (r *registrationStore) GetUserFromToken(ctx context.Context, plaintextToken
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNoUserFound
-		} else {
-			return nil, err
 		}
+		return nil, err
 	}
 
 	return &user, nil

@@ -19,10 +19,10 @@ import (
 )
 
 const (
-	//RegistrationTokenTTL is the amount of time a registration token is valid for
+	// RegistrationTokenTTL is the amount of time a registration token is valid for.
 	RegistrationTokenTTL time.Duration = 15 * time.Minute
 
-	//SendEmailTimeout is the amount of time we give to our email sending process
+	// SendEmailTimeout is the amount of time we give to our email sending process.
 	SendEmailTimeout time.Duration = 10 * time.Second
 )
 
@@ -96,7 +96,10 @@ func (m *SESMailer) SendRegistrationEmail(parentCtx context.Context, user *data.
 	}
 
 	htmlBody := new(bytes.Buffer)
-	bodyTmpl.ExecuteTemplate(htmlBody, "htmlBody", registrationData)
+	err = bodyTmpl.ExecuteTemplate(htmlBody, "htmlBody", registrationData)
+	if err != nil {
+		return errors.Join(errors.New("failed to render email template"), err)
+	}
 	body := htmlBody.String()
 
 	res, err := m.client.SendEmail(ctx, &ses.SendEmailInput{
@@ -121,6 +124,6 @@ func (m *SESMailer) SendRegistrationEmail(parentCtx context.Context, user *data.
 	if err != nil {
 		return err
 	}
-	slog.Info("sent registration email", "messageID", res.MessageId, "destination", user.Email)
+	slog.InfoContext(ctx, "sent registration email", "messageID", res.MessageId, "destination", user.Email)
 	return nil
 }

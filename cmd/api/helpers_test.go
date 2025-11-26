@@ -221,7 +221,7 @@ func TestErrorResponses(t *testing.T) {
 	}
 }
 
-// Helper function to compare slices
+// Helper function to compare slices.
 func reflect(a, b []string) bool {
 	if len(a) != len(b) {
 		return false

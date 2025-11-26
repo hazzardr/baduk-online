@@ -45,7 +45,7 @@ func setupTestDB(t *testing.T) (*data.Database, func()) {
 	if err != nil {
 		t.Fatalf("failed to open database connection for migrations: %s", err)
 	}
-	defer sqlDB.Close() //nolint:errcheck
+	defer sqlDB.Close()
 
 	if err := goose.Up(sqlDB, "../../migrations"); err != nil {
 		t.Fatalf("failed to run migrations: %s", err)
@@ -72,7 +72,7 @@ type mockMailer struct {
 	mu         sync.Mutex
 }
 
-func (m *mockMailer) SendRegistrationEmail(ctx context.Context, user *data.User) error {
+func (m *mockMailer) SendRegistrationEmail(_ context.Context, user *data.User) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.emailsSent = append(m.emailsSent, user)
@@ -108,7 +108,7 @@ func TestUserRegistrationIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to make request: %s", err)
 		}
-		defer resp.Body.Close() //nolint:errcheck
+		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusCreated {
 			var errResp map[string]interface{}
@@ -169,7 +169,7 @@ func TestUserRegistrationIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to make request: %s", err)
 		}
-		defer resp.Body.Close() //nolint:errcheck
+		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusConflict {
 			t.Errorf("expected status 409, got %d", resp.StatusCode)
@@ -188,7 +188,7 @@ func TestUserRegistrationIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to make request: %s", err)
 		}
-		defer resp.Body.Close() //nolint:errcheck
+		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusUnprocessableEntity {
 			t.Errorf("expected status 422, got %d", resp.StatusCode)
@@ -207,7 +207,7 @@ func TestUserRegistrationIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to make request: %s", err)
 		}
-		defer resp.Body.Close() //nolint:errcheck
+		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusUnprocessableEntity {
 			t.Errorf("expected status 422, got %d", resp.StatusCode)
@@ -219,7 +219,7 @@ func TestUserRegistrationIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to make request: %s", err)
 		}
-		defer resp.Body.Close() //nolint:errcheck
+		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusNotFound {
 			t.Errorf("expected status 404, got %d", resp.StatusCode)

@@ -20,10 +20,13 @@ func (api *API) handleGetLoggedInUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	api.writeJSON(w, 200, user, nil)
+	err = api.writeJSON(w, 200, user, nil)
+	if err != nil {
+		api.serverErrorResponse(w, r, err)
+	}
 }
 
-// handleCreateUser will create a user in the database and attempt to send a registration email asynchronously
+// handleCreateUser will create a user in the database and attempt to send a registration email asynchronously.
 func (api *API) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name     string `json:"name"`
@@ -78,7 +81,7 @@ func (api *API) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleSendRegistrationEmail sends a registration email based on the email address in the payload
+// handleSendRegistrationEmail sends a registration email based on the email address in the payload.
 func (api *API) handleSendRegistrationEmail(w http.ResponseWriter, r *http.Request) {
 	user, err := api.getUserFromContext(r)
 	if err != nil {
@@ -97,7 +100,8 @@ func (api *API) handleSendRegistrationEmail(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// handleRegisterUser takes an activation token and determines if there are any users associated with it. If so, the user is now activated
+// handleRegisterUser takes an activation token and determines if there are any users
+// associated with it. If so, the user is now activated.
 func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Token string `json:"token"`

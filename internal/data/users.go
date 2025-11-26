@@ -29,7 +29,7 @@ type password struct {
 	hash      []byte `db:"password_hash"`
 }
 
-// Set calculates the hash of the password and stores both values in the struct
+// Set calculates the hash of the password and stores both values in the struct.
 func (p *password) Set(plaintextPassword string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(plaintextPassword), 12)
 	if err != nil {
@@ -40,7 +40,7 @@ func (p *password) Set(plaintextPassword string) error {
 	return nil
 }
 
-// Matches compares the hashed password to a hash of the plaintext input
+// Matches compares the hashed password to a hash of the plaintext input.
 func (p *password) Matches(plaintextPassword string) (bool, error) {
 	err := bcrypt.CompareHashAndPassword(p.hash, []byte(plaintextPassword))
 	if err != nil {
@@ -173,7 +173,7 @@ func (u *userStore) Delete(ctx context.Context, user *User) error {
 	return nil
 }
 
-// Update will update the given user
+// Update will update the given user.
 func (u *userStore) Update(ctx context.Context, user *User) error {
 	query := `
 		UPDATE 	users

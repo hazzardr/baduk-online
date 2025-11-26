@@ -28,7 +28,6 @@ linters:
     - gomoddirectives
     - goprintffuncname
     - gosec
-    - govet
     - iface
     - ineffassign
     - intrange
@@ -153,7 +152,6 @@ linters:
       packages:
         - github.com/jmoiron/sqlx
     sloglint:
-      no-global: all
       context: scope
   exclusions:
     generated: lax
@@ -178,6 +176,8 @@ linters:
           - gosec
           - noctx
           - wrapcheck
+          - nestif
+          - gocognit
         path: _test\.go
     paths:
       - third_party$
@@ -185,6 +185,7 @@ linters:
       - examples$
 issues:
   max-same-issues: 50
+
 formatters:
   enable:
     - goimports

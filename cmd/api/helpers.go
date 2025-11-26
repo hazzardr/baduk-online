@@ -119,7 +119,7 @@ func (api *API) dataConflictResponse(w http.ResponseWriter, r *http.Request, err
 
 // Begin sync helpers
 
-// background will launch the given function on a background goRoutine with recovery handlers
+// background will launch the given function on a background goRoutine with recovery handlers.
 func (api *API) background(fn func()) {
 	withRecoverPanic := func(caller func()) {
 		defer func() {
