@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -44,7 +45,7 @@ func setupTestDB(t *testing.T) (*data.Database, func()) {
 	if err != nil {
 		t.Fatalf("failed to open database connection for migrations: %s", err)
 	}
-	defer sqlDB.Close()
+	defer sqlDB.Close() //nolint:errcheck
 
 	if err := goose.Up(sqlDB, "../../migrations"); err != nil {
 		t.Fatalf("failed to run migrations: %s", err)
@@ -68,9 +69,12 @@ func setupTestDB(t *testing.T) (*data.Database, func()) {
 type mockMailer struct {
 	emailsSent []*data.User
 	db         *data.Database
+	mu         sync.Mutex
 }
 
 func (m *mockMailer) SendRegistrationEmail(ctx context.Context, user *data.User) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.emailsSent = append(m.emailsSent, user)
 	return nil
 }
@@ -104,7 +108,7 @@ func TestUserRegistrationIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to make request: %s", err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		if resp.StatusCode != http.StatusCreated {
 			var errResp map[string]interface{}
@@ -127,8 +131,11 @@ func TestUserRegistrationIntegration(t *testing.T) {
 			t.Error("expected user to be unvalidated")
 		}
 
-		if len(mailer.emailsSent) != 1 {
-			t.Errorf("expected 1 email sent, got %d", len(mailer.emailsSent))
+		mailer.mu.Lock()
+		emailCount := len(mailer.emailsSent)
+		mailer.mu.Unlock()
+		if emailCount != 1 {
+			t.Errorf("expected 1 email sent, got %d", emailCount)
 		}
 
 		dbUser, err := db.Users.GetByEmail(context.Background(), "test@example.com")
@@ -162,7 +169,7 @@ func TestUserRegistrationIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to make request: %s", err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		if resp.StatusCode != http.StatusConflict {
 			t.Errorf("expected status 409, got %d", resp.StatusCode)
@@ -181,7 +188,7 @@ func TestUserRegistrationIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to make request: %s", err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		if resp.StatusCode != http.StatusUnprocessableEntity {
 			t.Errorf("expected status 422, got %d", resp.StatusCode)
@@ -200,7 +207,7 @@ func TestUserRegistrationIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to make request: %s", err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		if resp.StatusCode != http.StatusUnprocessableEntity {
 			t.Errorf("expected status 422, got %d", resp.StatusCode)
@@ -212,7 +219,7 @@ func TestUserRegistrationIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to make request: %s", err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		if resp.StatusCode != http.StatusNotFound {
 			t.Errorf("expected status 404, got %d", resp.StatusCode)
