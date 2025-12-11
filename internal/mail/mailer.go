@@ -74,7 +74,7 @@ func (m *SESMailer) SendRegistrationEmail(parentCtx context.Context, user *data.
 	defer cancel()
 	subject := "Please verify your baduk.online account"
 	fromEmail := "no-reply@baduk.online"
-	bodyTmpl, err := template.New("").ParseFS(templateFS, "templates/registration.tmpl")
+	bodyTmpl, err := template.New("registration.tmpl").ParseFS(templateFS, "templates/registration.tmpl")
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func (m *SESMailer) SendRegistrationEmail(parentCtx context.Context, user *data.
 	}
 
 	htmlBody := new(bytes.Buffer)
-	err = bodyTmpl.ExecuteTemplate(htmlBody, "htmlBody", registrationData)
+	err = bodyTmpl.ExecuteTemplate(htmlBody, "registration.tmpl", registrationData)
 	if err != nil {
 		return errors.Join(errors.New("failed to render email template"), err)
 	}
@@ -110,7 +110,7 @@ func (m *SESMailer) SendRegistrationEmail(parentCtx context.Context, user *data.
 			Simple: &sesTypes.Message{
 				Body: &sesTypes.Body{
 					// Html
-					Text: &sesTypes.Content{
+					Html: &sesTypes.Content{
 						Data: &body,
 					},
 				},

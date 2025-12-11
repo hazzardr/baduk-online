@@ -74,7 +74,7 @@ func (api *API) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	api.background(func() {
-		err = api.mailer.SendRegistrationEmail(r.Context(), user)
+		err = api.mailer.SendRegistrationEmail(context.Background(), user)
 		if err != nil {
 			slog.Error("failed to send registration email", "user", user.Email, "err", err)
 		}
