@@ -1,0 +1,11 @@
+---
+- name: reload systemd user daemon
+  systemd:
+    daemon_reload: yes
+    scope: user
+
+- name: restart postgres
+  systemd:
+    name: postgres
+    state: restarted
+    scope: user

@@ -1,0 +1,17 @@
+---
+- name: reload systemd user daemon
+  systemd:
+    daemon_reload: yes
+    scope: user
+
+- name: restart caddy
+  systemd:
+    name: caddy
+    state: restarted
+    scope: user
+
+- name: restart caddy socket
+  systemd:
+    name: caddy.socket
+    state: restarted
+    scope: user

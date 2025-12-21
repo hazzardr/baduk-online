@@ -1,0 +1,26 @@
+[Unit]
+Description=Caddy Reverse Proxy
+Requires=caddy.socket
+
+[Container]
+ContainerName=caddy
+Image=ghcr.io/hazzardr/caddy:main
+Network=baduk.network
+Volume=/home/baduk/caddy_etc/Caddyfile:/etc/caddy/Caddyfile:Z
+Volume=caddy-config.volume:/config:Z
+Volume=caddy-data.volume:/data:Z
+
+HealthCmd=caddy version
+HealthInterval=10s
+HealthRetries=5
+HealthStartPeriod=5s
+HealthTimeout=3s
+HealthOnFailure=kill
+
+[Service]
+Restart=always
+MemoryMax=1024M
+Sockets=caddy.socket
+
+[Install]
+WantedBy=default.target

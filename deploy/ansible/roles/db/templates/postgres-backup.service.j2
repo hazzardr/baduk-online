@@ -1,0 +1,10 @@
+[Unit]
+Description=PostgreSQL Backup Service
+After=postgres.service
+Requires=postgres.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/bin/backup-postgres.sh
+StandardOutput=append:%h/backups/postgres/backup.log
+StandardError=append:%h/backups/postgres/backup.log

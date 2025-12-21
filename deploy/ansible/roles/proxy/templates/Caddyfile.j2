@@ -1,0 +1,37 @@
+{
+    # Global settings
+    email rbrianhazzard+badukacme@protonmail.com  # Add your email for ACME notifications
+
+    # Default log format for easier debugging
+    log {
+        output stdout
+        format json
+    }
+}
+
+*.baduk.online, baduk.online {
+    tls {
+        dns cloudflare {{ vault_cf_api_token }}
+        resolvers 1.1.1.1
+    }
+
+    # Add security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-XSS-Protection "1; mode=block"
+    }
+
+    reverse_proxy 127.0.0.1:{{ baduk_port }} {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+http://*.baduk.online, http://baduk.online {
+    redir https://{host}{uri} permanent
+}

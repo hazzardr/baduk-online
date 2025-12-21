@@ -1,8 +1,6 @@
 package api
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -52,28 +50,28 @@ func TestWriteJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			rr := httptest.NewRecorder()
 			api := &API{}
-			
+
 			err := api.writeJSON(rr, tt.status, tt.data, tt.headers)
 			if err != nil {
 				t.Fatalf("writeJSON returned error: %v", err)
 			}
-			
+
 			resp := rr.Result()
 			defer resp.Body.Close()
-			
+
 			if resp.StatusCode != tt.wantStatus {
 				t.Errorf("status code = %d, want %d", resp.StatusCode, tt.wantStatus)
 			}
-			
+
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				t.Fatalf("couldn't read response body: %v", err)
 			}
-			
+
 			if string(body) != tt.wantBody {
 				t.Errorf("body = %q, want %q", string(body), tt.wantBody)
 			}
-			
+
 			for k, v := range tt.wantHeaders {
 				if !reflect(resp.Header[k], v) {
 					t.Errorf("header[%q] = %v, want %v", k, resp.Header[k], v)
@@ -88,7 +86,7 @@ func TestReadJSON(t *testing.T) {
 		Name string `json:"name"`
 		Age  int    `json:"age"`
 	}
-	
+
 	tests := []struct {
 		name        string
 		requestBody string
@@ -133,17 +131,17 @@ func TestReadJSON(t *testing.T) {
 			errorString: "body must only contain a single JSON value",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			api := &API{}
 			var result testStruct
-			
+
 			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.requestBody))
 			rr := httptest.NewRecorder()
-			
+
 			err := api.readJSON(rr, req, &result)
-			
+
 			if tt.wantError {
 				if err == nil {
 					t.Fatal("expected error but got none")
@@ -176,61 +174,54 @@ func TestErrorResponses(t *testing.T) {
 				api.badRequestResponse(w, r, errors.New("bad request"))
 			},
 			wantStatus: http.StatusBadRequest,
-			wantBody:   "\"bad request\"",
+			wantBody:   "{\n\t\"error\": \"bad request\"\n}",
 		},
 		{
 			name: "Failed validation",
 			testFunc: func(api *API, w http.ResponseWriter, r *http.Request) {
-				api.failedValidation(w, r, map[string]string{"field": "invalid"})
+				api.failedValidationResponse(w, r, map[string]string{"field": "invalid"})
 			},
 			wantStatus: http.StatusUnprocessableEntity,
-			wantBody:   "{\n\t\"field\": \"invalid\"\n}",
+			wantBody:   "{\n\t\"error\": {\n\t\t\"field\": \"invalid\"\n\t}\n}",
+		},
+		{
+			name: "Server error response",
+			testFunc: func(api *API, w http.ResponseWriter, r *http.Request) {
+				api.serverErrorResponse(w, r, errors.New("database connection failed"))
+			},
+			wantStatus: http.StatusInternalServerError,
+			wantBody:   "{\n\t\"error\": \"internal server error\"\n}",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			api := &API{}
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			rr := httptest.NewRecorder()
-			
+
 			tt.testFunc(api, rr, req)
-			
+
 			resp := rr.Result()
 			defer resp.Body.Close()
-			
+
 			if resp.StatusCode != tt.wantStatus {
 				t.Errorf("status code = %d, want %d", resp.StatusCode, tt.wantStatus)
 			}
-			
+
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				t.Fatalf("couldn't read response body: %v", err)
 			}
-			
-			// Normalize JSON for comparison
-			var parsedActual, parsedExpected interface{}
-			err = json.Unmarshal(body, &parsedActual)
-			if err != nil {
-				t.Fatalf("couldn't parse actual JSON: %v", err)
-			}
-			
-			err = json.Unmarshal([]byte(tt.wantBody), &parsedExpected)
-			if err != nil {
-				t.Fatalf("couldn't parse expected JSON: %v", err)
-			}
-			
-			actualBytes, _ := json.Marshal(parsedActual)
-			expectedBytes, _ := json.Marshal(parsedExpected)
-			
-			if !bytes.Equal(actualBytes, expectedBytes) {
-				t.Errorf("body = %s, want %s", body, tt.wantBody)
+
+			if string(body) != tt.wantBody {
+				t.Errorf("body = %q, want %q", string(body), tt.wantBody)
 			}
 		})
 	}
 }
 
-// Helper function to compare slices
+// Helper function to compare slices.
 func reflect(a, b []string) bool {
 	if len(a) != len(b) {
 		return false

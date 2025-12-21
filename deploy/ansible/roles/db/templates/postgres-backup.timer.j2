@@ -1,0 +1,11 @@
+[Unit]
+Description=PostgreSQL Backup Timer
+Requires=postgres.service
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

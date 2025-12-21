@@ -1,0 +1,6 @@
+---
+- name: reboot
+  become: yes
+  ansible.builtin.reboot:
+    reboot_timeout: 120
+    post_reboot_delay: 30

@@ -6,16 +6,17 @@ import (
 )
 
 var (
+	// EmailRX is a regular expression for validating email addresses per the WHATWG HTML specification.
 	// https://html.spec.whatwg.org/#valid-e-mail-address
-	EmailRX = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+	EmailRX = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$") //nolint:lll
 )
 
-// Define a new Validator type which contains a map of validation errors.
+// Validator type which contains a map of validation errors.
 type Validator struct {
 	Errors map[string]string
 }
 
-// New is a helper which creates a new Validator instance with an empty errors map.
+// New is a helper that creates a new Validator instance with an empty errors map.
 func New() *Validator {
 	return &Validator{Errors: make(map[string]string)}
 }

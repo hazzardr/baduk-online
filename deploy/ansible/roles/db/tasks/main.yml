@@ -1,0 +1,88 @@
+---
+- name: Ensure systemd User Dir exists
+  file:
+    path: "~/.config/systemd/user"
+    state: directory
+    mode: '0755'
+  
+- name: Ensure user containers systemd directory exists
+  file:
+    path: "~/.config/containers/systemd"
+    state: directory
+    mode: '0700'
+
+- name: Ensure /etc/containers directory exists
+  become: true
+  file:
+    path: "/etc/containers"
+    state: directory
+    mode: '0755'
+
+- name: Deploy postgres environment file
+  become: true
+  template:
+    src: postgres.env.j2
+    dest: "/etc/containers/postgres.env"
+    mode: '0600'
+  notify:
+    - restart postgres
+
+- name: Deploy db volume 
+  template:
+    src: postgres-data.volume.j2
+    dest: "~/.config/containers/systemd/postgres-data.volume"
+    mode: '0600'
+  notify:
+    - reload systemd user daemon
+    - restart postgres
+
+- name: Deploy db container
+  template:
+    src: postgres.container.j2
+    dest: "~/.config/containers/systemd/postgres.container"
+    mode: '0600'
+  notify:
+    - reload systemd user daemon
+    - restart postgres
+
+- name: Ensure bin directory exists
+  file:
+    path: "~/bin"
+    state: directory
+    mode: '0755'
+
+- name: Ensure backup directory exists
+  file:
+    path: "~/backups/postgres"
+    state: directory
+    mode: '0700'
+
+- name: Deploy backup script
+  template:
+    src: backup-postgres.sh.j2
+    dest: "~/bin/backup-postgres.sh"
+    mode: '0700'
+
+- name: Deploy backup service unit
+  template:
+    src: postgres-backup.service.j2
+    dest: "~/.config/systemd/user/postgres-backup.service"
+    mode: '0644'
+  notify:
+    - reload systemd user daemon
+
+- name: Deploy backup timer unit
+  template:
+    src: postgres-backup.timer.j2
+    dest: "~/.config/systemd/user/postgres-backup.timer"
+    mode: '0644'
+  notify:
+    - reload systemd user daemon
+
+- name: Enable backup timer
+  systemd:
+    name: postgres-backup.timer
+    enabled: true
+    scope: user
+    daemon_reload: true
+
