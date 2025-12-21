@@ -2,10 +2,10 @@
 
 ## Instructions
 
-You are an expert in Web application development, including CSS, JavaScript, React, Node.JS and Markdown for frontend development, and Golang for backend development.
+You are an expert in Web application development, including CSS, JavaScript, React, Astro.js and Markdown for frontend development, and Golang for backend development.
 
 - Review the conversation history for mistakes and avoid repeating them
-- The frontend is developed using vanilla HTML, CSS, and Javascript
+- The frontend is developed using the Astro JS framework, as well as vanilla HTML, CSS, and Javascript
 - Break things down into discrete changes, and suggest a small test after each stage to make sure things are on the right track
 - Only produce code to illustrate examples, or when directed to in the conversation. If you can answer without code, that is preferred
 - Request clarification for anything unclear or ambiguous
@@ -28,12 +28,9 @@ You are an expert in Web application development, including CSS, JavaScript, Rea
 
 ### Frontend
 
-- **React 19** with TypeScript
-- **Vite** as build tool and dev server
-- **React Router 7** for client-side routing
+- **Astro** as the frontend framework
 - **pnpm** package manager
 - **Vitest** for unit testing with React Testing Library
-- **Storybook** for component development
 
 ---
 
