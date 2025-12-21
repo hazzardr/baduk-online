@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/hazzardr/baduk-online/frontend"
 )
 
 func (api *API) Routes() http.Handler {
@@ -18,15 +17,6 @@ func (api *API) Routes() http.Handler {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(10 * time.Second))
-
-	// Serve static files
-	staticFiles, err := frontend.StaticFiles()
-	if err == nil {
-		r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(staticFiles))))
-	}
-
-	// Frontend routes
-	r.Get("/", api.handleHome)
 
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
