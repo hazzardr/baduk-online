@@ -10,7 +10,14 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.1.18",
     "astro": "^5.16.6",
     "vitest": "^3.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
+    "autoprefixer": "^10.4.23",
+    "daisyui": "^5.5.14",
+    "tailwindcss": "^4.1.18"
   }
 }

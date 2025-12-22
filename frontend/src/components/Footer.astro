@@ -1,0 +1,22 @@
+---
+const currentYear = new Date().getFullYear();
+---
+
+<footer class="footer footer-center bg-base-200 text-base-content p-10 mt-auto">
+  <div class="grid grid-flow-col gap-4">
+    <a href="/about" class="link link-hover">About</a>
+    <a href="/privacy" class="link link-hover">Privacy Policy</a>
+    <a href="/terms" class="link link-hover">Terms of Service</a>
+    <a href="/contact" class="link link-hover">Contact</a>
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <p class="text-sm">
+      &copy; {currentYear} <strong>baduk.online</strong>. All rights reserved.
+    </p>
+    
+    <p class="text-xs opacity-70">
+      Play Go (Baduk, Weiqi) online with players around the world
+    </p>
+  </div>
+</footer>

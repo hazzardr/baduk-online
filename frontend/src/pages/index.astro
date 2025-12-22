@@ -1,16 +1,25 @@
 ---
-
+import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout>
+  <!-- Hero Section -->
+  <div class="hero min-h-[80vh] bg-base-200">
+    <div class="hero-content text-center">
+      <div class="max-w-2xl">
+
+        <h1 class="text-5xl font-bold">Welcome to <span class="text-primary">baduk.online</span></h1>
+          <div class="hero-content text-center">
+              <div class="max-w-md">
+                  <h2 class="text-3xl font-bold italic">Register your board and make your move</h2>
+              </div>
+          </div>
+        <div class="flex gap-4 justify-center">
+          <a href="/signup" class="btn btn-primary btn-lg shadow-lg">Play Now</a>
+          <a href="/about" class="btn btn-outline btn-lg">Learn More</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</BaseLayout>
