@@ -1,0 +1,41 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  isAuthenticated?: boolean;
+  userName?: string;
+}
+
+const { 
+  title = 'baduk.online - Play Go Online', 
+  description = 'Play Go (Baduk, Weiqi) online with players around the world. Free, open-source, and modern interface.',
+  isAuthenticated = false,
+  userName = ''
+} = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+
+    <title>{title}</title>
+  </head>
+  <body class="flex flex-col min-h-screen">
+    <Header isAuthenticated={isAuthenticated} userName={userName} />
+    
+    <main class="flex-grow">
+      <slot />
+    </main>
+    
+    <Footer />
+  </body>
+</html>
