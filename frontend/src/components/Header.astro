@@ -1,4 +1,6 @@
 ---
+import logo from '../assets/board-64.png';
+
 // Props for authentication state (future use)
 interface Props {
   isAuthenticated?: boolean;
@@ -31,6 +33,7 @@ const { isAuthenticated = false, userName = '' } = Astro.props;
 
       <!-- Logo / Brand -->
       <a href="/" class="btn btn-ghost text-xl font-bold">
+        <img src={logo.src} alt="baduk.online logo" class="w-8 h-8" />
         <span class="hidden sm:inline">baduk.online</span>
         <span class="sm:hidden">囲碁</span>
       </a>
