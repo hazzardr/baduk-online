@@ -1,8 +1,8 @@
 ---
-import { ViewTransitions } from 'astro:transitions';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
-import '../styles/global.css';
+import { ViewTransitions } from "astro:transitions";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import "../styles/global.css";
 
 interface Props {
   title?: string;
@@ -12,14 +12,14 @@ interface Props {
 }
 
 const {
-  title = 'baduk.online - Play Go Online',
-  description = 'Play Go (Baduk, Weiqi) online with players around the world. Free, open-source, and modern interface.',
+  title = "baduk.online - Play Go Online",
+  description = "Play Go (Baduk, Weiqi) online with players around the world. Free, open-source, and modern interface.",
   isAuthenticated = false,
-  userName = ''
+  userName = "",
 } = Astro.props;
 ---
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
