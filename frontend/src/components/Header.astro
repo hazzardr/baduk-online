@@ -14,12 +14,12 @@ const { isAuthenticated = false, userName = '' } = Astro.props;
     <div class="navbar-start">
       <!-- Mobile menu dropdown -->
       <div class="dropdown lg:hidden">
-        <label tabindex="0" class="btn btn-ghost">
+        <div tabIndex={0} role="button" class="btn btn-ghost" aria-label="Open menu">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-        </label>
-        <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+        </div>
+        <ul tabIndex={0} class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
           <li><a href="/">Home</a></li>
           <li><a href="/about">About</a></li>
           {!isAuthenticated && (
@@ -66,12 +66,12 @@ const { isAuthenticated = false, userName = '' } = Astro.props;
       {isAuthenticated ? (
         <!-- User menu when authenticated -->
         <div class="dropdown dropdown-end">
-          <label tabindex="0" class="btn btn-ghost btn-circle avatar placeholder">
+          <div tabIndex={0} role="button" class="btn btn-ghost btn-circle avatar placeholder" aria-label="User menu">
             <div class="bg-neutral text-neutral-content rounded-full w-10">
               <span class="text-xl">{userName.charAt(0).toUpperCase()}</span>
             </div>
-          </label>
-          <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+          </div>
+          <ul tabIndex={0} class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
             <li class="menu-title">{userName}</li>
             <li><a href="/profile">Profile</a></li>
             <li><a href="/settings">Settings</a></li>
@@ -89,30 +89,37 @@ const { isAuthenticated = false, userName = '' } = Astro.props;
     </div>
 </header>
 
-<script>
+<script is:inline>
   // Theme controller - sync with localStorage and system preference
-  const themeController = document.querySelector('.theme-controller') as HTMLInputElement;
-  
-  // Initialize theme from localStorage or system preference
-  const initTheme = () => {
-    const savedTheme = localStorage.getItem('theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = savedTheme === 'dark' || (!savedTheme && systemPrefersDark);
-    
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    if (themeController) {
-      themeController.checked = isDark;
-    }
-  };
+  // This script runs inline to prevent FOUC (Flash of Unstyled Content)
+  (function() {
+    const initTheme = () => {
+      const savedTheme = localStorage.getItem('theme');
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = savedTheme === 'dark' || (!savedTheme && systemPrefersDark);
 
-  // Toggle theme
-  themeController?.addEventListener('change', (e) => {
-    const target = e.target as HTMLInputElement;
-    const theme = target.checked ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  });
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    };
 
-  // Initialize on load
-  initTheme();
+    // Initialize theme immediately
+    initTheme();
+
+    // Set up event listener after DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      const themeController = document.querySelector('.theme-controller');
+
+      if (themeController) {
+        // Sync checkbox with current theme
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        themeController.checked = currentTheme === 'dark';
+
+        // Toggle theme on change
+        themeController.addEventListener('change', (e) => {
+          const theme = e.target.checked ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+          localStorage.setItem('theme', theme);
+        });
+      }
+    });
+  })();
 </script>
