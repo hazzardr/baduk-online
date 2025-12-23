@@ -1,11 +1,12 @@
-# CRUSH.md - Agent Guide for go-baduk
+# Agent Guide for go-baduk
 
 ## Instructions
 
-You are an expert in Web application development, including CSS, JavaScript, React, Astro.js and Markdown for frontend development, and Golang for backend development.
+You are an expert in Web application development, including CSS, DaisyUI, TailwindCSS, Typescript, Astro.js, for frontend development, and Golang for backend development.
 
 - Review the conversation history for mistakes and avoid repeating them
-- The frontend is developed using the Astro JS framework, as well as vanilla HTML, CSS, and Javascript
+- The frontend is developed using astroJS.
+- Use tailwind for styling, always using daisyUI components where applicable
 - Break things down into discrete changes, and suggest a small test after each stage to make sure things are on the right track
 - Only produce code to illustrate examples, or when directed to in the conversation. If you can answer without code, that is preferred
 - Request clarification for anything unclear or ambiguous
@@ -15,7 +16,7 @@ You are an expert in Web application development, including CSS, JavaScript, Rea
 
 ## Project Overview
 
-**baduk.online** is a full-stack web application with a Go REST API backend and React frontend for user registration, authentication, and Go (baduk) gameplay.
+**baduk.online** is a full-stack web application with a Go REST API backend and astroJS frontend for user registration, authentication, and Go (baduk) gameplay.
 
 ### Backend
 
@@ -28,9 +29,10 @@ You are an expert in Web application development, including CSS, JavaScript, Rea
 
 ### Frontend
 
-- **Astro** as the frontend framework
+- **Astro 5** with TypeScript
+- **TailwindCSS 4** with **DaisyUI 5** component library
 - **pnpm** package manager
-- **Vitest** for unit testing with React Testing Library
+- **Vitest** for unit testing
 
 ---
 
@@ -91,17 +93,11 @@ pnpm vitest:watch
 # Type checking
 pnpm typecheck
 
-# Lint code (ESLint + Stylelint)
-pnpm lint
+# Lint code with Astro check
+pnpm astro check
 
 # Format code with Prettier
 pnpm prettier:write
-
-# Start Storybook for component development
-pnpm storybook
-
-# Build Storybook static site
-pnpm storybook:build
 ```
 
 ### Database
@@ -165,6 +161,115 @@ internal/validator/ - Input validation helpers
 migrations/       - Goose SQL migrations
 deploy/           - Ansible playbooks and Terraform configs
 tests/smoke/      - k6 smoke tests
+```
+
+## Frontend Architecture Patterns
+
+### Application Structure
+
+- All frontend code is in `./frontend` directory
+- **Astro** uses `.astro` files for components and pages
+- **Islands Architecture** - JavaScript is only loaded for interactive components
+- **Server-first** - Pages render on the server by default
+
+### Astro Framework
+
+**Documentation**: https://docs.astro.build/llms.txt
+
+**Key Concepts**:
+
+- **Pages**: Files in `src/pages/` become routes (e.g., `index.astro` → `/`)
+- **Layouts**: Reusable page templates in `src/layouts/`
+- **Components**: Reusable UI components in `src/components/`
+- **Assets**: Static assets (images, fonts) in `src/assets/`
+- **Styles**: Global CSS and component styles in `src/styles/`
+
+**Astro Component Structure**:
+
+```astro
+---
+// Component Script (runs at build time on server)
+import ComponentName from '../components/ComponentName.astro';
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<!-- Template (HTML-like syntax) -->
+<div>
+  <h1>{title}</h1>
+  <ComponentName />
+</div>
+
+<style>
+  /* Scoped CSS */
+  h1 { color: blue; }
+</style>
+
+<script>
+  // Client-side JavaScript (optional)
+  console.log('Interactive code');
+</script>
+```
+
+**Routing**: File-based routing in `src/pages/`
+- `pages/index.astro` → `/`
+- `pages/about.astro` → `/about`
+- `pages/blog/[slug].astro` → `/blog/:slug` (dynamic)
+
+### TailwindCSS & DaisyUI
+
+**Documentation**: https://daisyui.com/llms.txt
+
+**DaisyUI Component Library**:
+
+- Semantic class names for UI components
+- Built on TailwindCSS 4 utility classes
+- Theming system with CSS variables
+- No JavaScript required for most components
+
+**Styling Best Practices**:
+
+1. **Prefer utility classes** over custom CSS
+2. **Use DaisyUI components** for common UI patterns:
+   - `btn`, `card`, `navbar`, `dropdown`, `modal`, etc.
+3. **Use semantic color names**: `primary`, `secondary`, `accent`, `base-100`, etc.
+4. **Responsive design** with Tailwind prefixes: `sm:`, `md:`, `lg:`, `xl:`
+5. **Theme switching** with `data-theme` attribute
+
+**Common DaisyUI Components**:
+
+```html
+<!-- Button -->
+<button class="btn btn-primary">Click me</button>
+
+<!-- Card -->
+<div class="card bg-base-100 shadow-xl">
+  <div class="card-body">
+    <h2 class="card-title">Card Title</h2>
+    <p>Card content</p>
+  </div>
+</div>
+
+<!-- Navbar -->
+<div class="navbar bg-base-100">
+  <div class="navbar-start">...</div>
+  <div class="navbar-center">...</div>
+  <div class="navbar-end">...</div>
+</div>
+```
+
+**Theming**: Define custom themes in `src/styles/global.css`:
+
+```css
+@plugin "daisyui/theme" {
+    name: "light";
+    default: true;
+    --color-primary: #5D866C;
+    --color-base-100: #F6F0D7;
+    /* ... */
+}
 ```
 
 ## Backend Architecture Patterns
@@ -418,6 +523,81 @@ func TestUserRegistrationIntegration(t *testing.T) {
 
 **Run**: `make tests/smoke` (requires running server on port 4000)
 
+### Frontend Unit Tests
+
+**Test Files**: `*.test.ts` files co-located with components/utilities
+
+**Run Tests**:
+
+```bash
+cd frontend/
+pnpm vitest          # Run once
+pnpm vitest:watch    # Watch mode
+```
+
+**Test Pattern**:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+
+describe('utilityFunction', () => {
+  it('performs expected operation', () => {
+    const result = utilityFunction(input);
+    expect(result).toBe(expected);
+  });
+});
+```
+
+**Astro Component Testing**: Use Astro's built-in test utilities or test logic separately from components
+
+---
+
+## Code Conventions
+
+### Frontend Conventions
+
+**Component Naming**:
+
+- PascalCase for components: `Header`, `Footer`, `BaseLayout`
+- File naming: `ComponentName.astro` for Astro components
+- Tests: `ComponentName.test.ts`
+
+**File Organization**:
+
+- **Pages**: `src/pages/` - File-based routing (e.g., `index.astro`, `about.astro`)
+- **Layouts**: `src/layouts/` - Page templates (e.g., `BaseLayout.astro`)
+- **Components**: `src/components/` - Reusable UI components (e.g., `Header.astro`)
+- **Styles**: `src/styles/` - Global CSS and theme files
+- **Assets**: `src/assets/` - Static assets (images, fonts)
+
+**Astro Component Structure**:
+
+1. **Frontmatter** (between `---` markers) - TypeScript/JavaScript that runs at build time
+2. **Template** - HTML-like markup with component slots
+3. **Styles** (optional) - Scoped CSS in `<style>` tags
+4. **Scripts** (optional) - Client-side JavaScript in `<script>` tags
+
+**Styling Conventions**:
+
+- Use **TailwindCSS utility classes** for styling
+- Use **DaisyUI components** for common UI patterns
+- Use **semantic color names**: `primary`, `secondary`, `accent`, `base-100`, etc.
+- Avoid custom CSS unless necessary
+- Define custom themes in `src/styles/global.css`
+
+**Import Organization**:
+
+1. Astro components and layouts
+2. External dependencies
+3. Internal utilities and types
+4. Assets (images, icons)
+
+**Code Style**:
+
+- Prettier for formatting
+- Astro check for type checking and linting
+- TypeScript for type safety
+
 ### Backend Conventions
 
 ### Logging
@@ -539,6 +719,23 @@ All under `/api/v1`:
 
 **Go Version**: 1.25 (uses `GOEXPERIMENT=jsonv2` in Docker build)
 
+### Frontend Libraries
+
+**Production Dependencies**:
+
+- `astro` (5.x) - Web framework
+- `tailwindcss` (4.x) - CSS framework
+- `daisyui` (5.x) - Component library for Tailwind
+
+**Development Dependencies**:
+
+- `typescript` (5.x) - Type checking
+- `vitest` (latest) - Unit testing framework
+- `prettier` (latest) - Code formatting
+- `@astrojs/check` (latest) - Astro linting and type checking
+
+**Package Manager**: pnpm 9.15.4
+
 ---
 
 ## Docker/Containers
@@ -624,14 +821,11 @@ Email sending happens **asynchronously** after user creation. Failures are logge
 
 ### Frontend
 
-- `*.tsx` - React components with TypeScript + JSX
-- `*.ts` - TypeScript modules (no JSX)
-- `*.module.css` - CSS Modules (scoped styles)
-- `*.test.tsx` - Vitest unit tests
-- `*.story.tsx` - Storybook stories
-- `*.page.tsx` - Page components (routes)
+- `*.astro` - Astro components and pages
+- `*.ts` - TypeScript modules
+- `*.css` - CSS files (global or component styles)
+- `*.test.ts` - Vitest unit tests
 - `*.mjs` - ES module JavaScript config files
-- `*.cjs` - CommonJS JavaScript config files
 
 ---
 
@@ -689,25 +883,56 @@ pnpm vitest:watch  # Unit tests in watch mode
 
 ### Add a New Frontend Page
 
-1. Create page component in `src/pages/` (e.g., `Login.page.tsx`)
-2. Add route in `src/Router.tsx`:
-   ```tsx
-   { path: '/login', element: <LoginPage /> }
-   ```
-3. Create components in `src/components/` as needed
-4. Write tests: `ComponentName.test.tsx`
-5. Optional: Create Storybook stories
+1. Create page file in `src/pages/` (e.g., `login.astro`)
+2. File name becomes the route automatically:
+   - `src/pages/login.astro` → `/login`
+   - `src/pages/blog/[slug].astro` → `/blog/:slug` (dynamic route)
+3. Use BaseLayout or create custom layout
+4. Add components in `src/components/` as needed
+5. Write tests for utilities: `utils.test.ts`
+
+**Example Page**:
+
+```astro
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Login">
+  <div class="hero min-h-screen bg-base-200">
+    <div class="card w-96 bg-base-100 shadow-xl">
+      <!-- Login form here -->
+    </div>
+  </div>
+</BaseLayout>
+```
 
 ### Add a New Frontend Component
 
-1. Create component folder: `src/components/ComponentName/`
-2. Add files:
-   - `ComponentName.tsx` - Main component
-   - `ComponentName.module.css` - Styles (optional)
-   - `ComponentName.test.tsx` - Tests
-   - `ComponentName.story.tsx` - Storybook story (optional)
-3. Export from component file
-4. Import where needed
+1. Create component file: `src/components/ComponentName.astro`
+2. Define Props interface in frontmatter
+3. Use TailwindCSS and DaisyUI classes for styling
+4. Import and use in pages or other components
+
+**Example Component**:
+
+```astro
+---
+interface Props {
+  title: string;
+  variant?: 'primary' | 'secondary';
+}
+
+const { title, variant = 'primary' } = Astro.props;
+---
+
+<div class={`card bg-base-100 ${variant === 'primary' ? 'shadow-xl' : 'shadow-md'}`}>
+  <div class="card-body">
+    <h2 class="card-title">{title}</h2>
+    <slot />
+  </div>
+</div>
+```
 
 **Add a new endpoint**:
 
