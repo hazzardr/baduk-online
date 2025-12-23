@@ -35,7 +35,6 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
         </svg>
       </div>
       <ul
-        tabIndex={0}
         class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52"
       >
         <li><a href="/">Home</a></li>
@@ -73,7 +72,7 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
 
   <div class="navbar-end gap-2">
     <!-- Theme toggle -->
-    <label class="swap swap-rotate btn btn-ghost btn-circle">
+    <label class="swap swap-rotate btn btn-ghost btn-circle" aria-label="Toggle theme">
       <input type="checkbox" class="theme-controller" value="dark" />
 
       <!-- Sun icon -->
@@ -114,7 +113,6 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
             </div>
           </div>
           <ul
-            tabIndex={0}
             class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52"
           >
             <li class="menu-title">{userName}</li>
@@ -148,7 +146,7 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
 
 <script is:inline>
   // Theme controller - sync with localStorage and system preference
-  // This script runs inline to prevent FOUC (Flash of Unstyled Content)
+  // This script runs  to prevent FOUC (Flash of Unstyled Content)
   (function () {
     const initTheme = () => {
       const savedTheme = localStorage.getItem("theme");
