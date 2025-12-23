@@ -72,7 +72,10 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
 
   <div class="navbar-end gap-2">
     <!-- Theme toggle -->
-    <label class="swap swap-rotate btn btn-ghost btn-circle" aria-label="Toggle theme">
+    <label
+      class="swap swap-rotate btn btn-ghost btn-circle"
+      aria-label="Toggle theme"
+    >
       <input type="checkbox" class="theme-controller" value="dark" />
 
       <!-- Sun icon -->
@@ -112,9 +115,7 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
               <span class="text-xl">{userName.charAt(0).toUpperCase()}</span>
             </div>
           </div>
-          <ul
-            class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52"
-          >
+          <ul class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
             <li class="menu-title">{userName}</li>
             <li>
               <a href="/profile">Profile</a>
@@ -166,9 +167,8 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
     initTheme();
 
     // Set up event listener after DOM is ready
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("astro:page-load", () => {
       const themeController = document.querySelector(".theme-controller");
-
       if (themeController) {
         // Sync checkbox with current theme
         const currentTheme =
