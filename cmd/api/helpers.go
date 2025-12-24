@@ -127,11 +127,6 @@ func (api *API) csrfFailureResponse(w http.ResponseWriter, r *http.Request) {
 	api.errorResponse(w, r, http.StatusForbidden, "CSRF check failed")
 }
 
-func (api *API) forbiddenResponse(w http.ResponseWriter, r *http.Request, message string) {
-	slog.Warn("forbidden", "method", r.Method, "uri", r.URL.RequestURI(), "message", message)
-	api.errorResponse(w, r, http.StatusForbidden, message)
-}
-
 // Begin sync helpers
 
 // background will launch the given function on a background goRoutine with recovery handlers.

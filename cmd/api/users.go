@@ -191,95 +191,18 @@ func (api *API) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user already has an active session
-	existingEmail := api.sessionManager.GetString(r.Context(), string(userContextKey))
-	if existingEmail != "" {
-		// User is already logged in
-		if existingEmail == input.Email {
-			// Same user trying to login again - just return success
-			user, err := api.db.Users.GetByEmail(r.Context(), existingEmail)
-			if err != nil {
-				api.serverErrorResponse(w, r, err)
-				return
-			}
-
-			slog.Info("user already logged in", "email", existingEmail, "ip", r.RemoteAddr)
-
-			userDetails := map[string]any{
-				"name":      user.Name,
-				"email":     user.Email,
-				"validated": user.Validated,
-			}
-
-			err = api.writeJSON(w, http.StatusOK, userDetails, nil)
-			if err != nil {
-				api.serverErrorResponse(w, r, err)
-			}
-			return
-		} else {
-			// Different user - require explicit logout first
-			slog.Warn("login attempt while logged in as different user",
-				"current_user", existingEmail,
-				"attempted_user", input.Email,
-				"ip", r.RemoteAddr)
-			api.errorResponse(w, r, http.StatusConflict,
-				"already logged in as different user, please logout first")
-			return
-		}
+	if api.handleExistingSession(w, r, input.Email) {
+		return // Response already sent
 	}
 
-	// No existing session - proceed with normal login flow
-	v := validator.New()
-	data.ValidateEmail(v, input.Email)
-	data.ValidatePasswordPlaintext(v, input.Password)
-	if !v.Valid() {
-		api.failedValidationResponse(w, r, v.Errors)
-		return
+	// Authenticate user credentials
+	user := api.authenticateUser(w, r, input.Email, input.Password)
+	if user == nil {
+		return // Authentication failed, response already sent
 	}
 
-	// Get user by email
-	user, err := api.db.Users.GetByEmail(r.Context(), input.Email)
-	if err != nil {
-		if errors.Is(err, data.ErrNoUserFound) {
-			// Log failed login attempt
-			slog.Warn("failed login attempt", "ip", r.RemoteAddr, "email", input.Email, "error", "user not found")
-			v.AddError("email", "invalid email or password")
-			api.failedValidationResponse(w, r, v.Errors)
-		} else {
-			api.serverErrorResponse(w, r, err)
-		}
-		return
-	}
-
-	// Check password
-	match, err := user.Password.Matches(input.Password)
-	if err != nil {
-		api.serverErrorResponse(w, r, err)
-		return
-	}
-
-	if !match {
-		// Log failed login attempt
-		slog.Warn("failed login attempt", "ip", r.RemoteAddr, "email", input.Email, "error", "invalid password")
-		v.AddError("email", "invalid email or password")
-		api.failedValidationResponse(w, r, v.Errors)
-		return
-	}
-
-	api.sessionManager.Put(r.Context(), string(userContextKey), user.Email)
-
-	slog.Info("user logged in", "email", user.Email, "ip", r.RemoteAddr)
-
-	// Return user info
-	userDetails := map[string]any{
-		"name":      user.Name,
-		"email":     user.Email,
-		"validated": user.Validated,
-	}
-
-	err = api.writeJSON(w, http.StatusOK, userDetails, nil)
-	if err != nil {
-		api.serverErrorResponse(w, r, err)
-	}
+	// Create session and send success response
+	api.createSessionAndRespond(w, r, user)
 }
 
 // handleLogout destroys the user's session.

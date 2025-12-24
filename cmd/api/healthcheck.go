@@ -19,7 +19,7 @@ func (api *API) checkHealth(ctx context.Context) map[string]string {
 			cached[k] = v
 		}
 		api.healthMu.RUnlock()
-		slog.Debug("returning cached health check result")
+		slog.DebugContext(ctx, "returning cached health check result", slog.Any("statuses", cached))
 		return cached
 	}
 	api.healthMu.RUnlock()
@@ -30,8 +30,6 @@ func (api *API) checkHealth(ctx context.Context) map[string]string {
 
 	// Double-check in case another goroutine just updated the cache
 	if time.Since(api.healthCachedAt) < CoalesceInterval && api.cachedHealth != nil {
-		slog.Debug("returning cached health check result (double-check)")
-		// Deep copy for the double-check case too
 		cached := make(map[string]string, len(api.cachedHealth))
 		for k, v := range api.cachedHealth {
 			cached[k] = v
@@ -44,7 +42,7 @@ func (api *API) checkHealth(ctx context.Context) map[string]string {
 
 	err := api.db.Ping(ctx)
 	if err != nil {
-		slog.Error("db conn failed", "err", err)
+		slog.ErrorContext(ctx, "db conn failed", "err", err)
 		statuses["db"] = "DOWN"
 	} else {
 		statuses["db"] = "OK"
@@ -52,7 +50,7 @@ func (api *API) checkHealth(ctx context.Context) map[string]string {
 
 	err = api.mailer.Ping(ctx)
 	if err != nil {
-		slog.Error("mail server conn failed", "err", err)
+		slog.ErrorContext(ctx, "mail server conn failed", "err", err)
 		statuses["ses"] = "DOWN"
 	} else {
 		statuses["ses"] = "OK"

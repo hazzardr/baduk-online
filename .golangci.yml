@@ -153,6 +153,10 @@ linters:
         - github.com/jmoiron/sqlx
     sloglint:
       context: scope
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
   exclusions:
     generated: lax
     presets:

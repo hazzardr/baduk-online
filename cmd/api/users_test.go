@@ -72,13 +72,13 @@ type mockMailer struct {
 	mu         sync.Mutex
 }
 
-func (m *mockMailer) SendAccountActivatedEmail(ctx context.Context, user *data.User) error {
-	//TODO implement me
+func (m *mockMailer) SendAccountActivatedEmail(_ context.Context, _ *data.User) error {
+	// TODO implement me
 	panic("implement me")
 }
 
-func (m *mockMailer) Ping(ctx context.Context) error {
-	//TODO implement me
+func (m *mockMailer) Ping(_ context.Context) error {
+	// TODO implement me
 	panic("implement me")
 }
 
