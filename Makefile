@@ -91,11 +91,14 @@ deploy/service:
 
 .PHONY: lint ## run golangci-lint
 lint:
-	golangci-lint run
+	golangci-lint run \
+		&& pnpm --dir frontend run lint
+
 
 .PHONY: fmt ## run go fmt
 fmt:
-	go fmt ./...
+	go fmt ./... \
+		&& pnpm --dir frontend run fmt
 
 .PHONY: test ## run all tests
 test:
