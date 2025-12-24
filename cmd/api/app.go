@@ -21,9 +21,9 @@ type API struct {
 	wg             sync.WaitGroup
 
 	// Health check caching
-	healthMu         sync.RWMutex
-	cachedHealth     map[string]string
-	healthCachedAt   time.Time
+	healthMu       sync.RWMutex
+	cachedHealth   map[string]string
+	healthCachedAt time.Time
 }
 
 func NewAPI(environment, version string, db *data.Database, mailer mail.Mailer, trustedOrigins []string) *API {
