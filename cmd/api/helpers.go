@@ -117,6 +117,21 @@ func (api *API) dataConflictResponse(w http.ResponseWriter, r *http.Request, err
 	api.errorResponse(w, r, http.StatusConflict, "tried to modify stale data, please refresh")
 }
 
+func (api *API) rateLimitExceededResponse(w http.ResponseWriter, r *http.Request) {
+	slog.Warn("rate limit exceeded", "method", r.Method, "uri", r.URL.RequestURI(), "ip", r.RemoteAddr)
+	api.errorResponse(w, r, http.StatusTooManyRequests, "rate limit exceeded, please try again later")
+}
+
+func (api *API) csrfFailureResponse(w http.ResponseWriter, r *http.Request) {
+	slog.Warn("CSRF check failed", "method", r.Method, "uri", r.URL.RequestURI(), "ip", r.RemoteAddr)
+	api.errorResponse(w, r, http.StatusForbidden, "CSRF check failed")
+}
+
+func (api *API) forbiddenResponse(w http.ResponseWriter, r *http.Request, message string) {
+	slog.Warn("forbidden", "method", r.Method, "uri", r.URL.RequestURI(), "message", message)
+	api.errorResponse(w, r, http.StatusForbidden, message)
+}
+
 // Begin sync helpers
 
 // background will launch the given function on a background goRoutine with recovery handlers.

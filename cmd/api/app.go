@@ -1,6 +1,7 @@
 package api
 
 import (
+	"net/http"
 	"sync"
 	"time"
 
@@ -16,13 +17,22 @@ type API struct {
 	db             *data.Database
 	mailer         mail.Mailer
 	sessionManager *scs.SessionManager
+	trustedOrigins []string
 	wg             sync.WaitGroup
+
+	// Health check caching
+	healthMu         sync.RWMutex
+	cachedHealth     map[string]string
+	healthCachedAt   time.Time
 }
 
-func NewAPI(environment, version string, db *data.Database, mailer mail.Mailer) *API {
+func NewAPI(environment, version string, db *data.Database, mailer mail.Mailer, trustedOrigins []string) *API {
 	sm := scs.New()
 	sm.Lifetime = 24 * time.Hour
+	sm.Cookie.Name = "session_id"
+	sm.Cookie.HttpOnly = true
 	sm.Cookie.Secure = environment == "production"
+	sm.Cookie.SameSite = http.SameSiteLaxMode
 	sm.Store = pgxstore.New(db.Pool)
 	return &API{
 		environment:    environment,
@@ -30,6 +40,7 @@ func NewAPI(environment, version string, db *data.Database, mailer mail.Mailer) 
 		db:             db,
 		mailer:         mailer,
 		sessionManager: sm,
+		trustedOrigins: trustedOrigins,
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -28,11 +29,12 @@ const version = "0.1.0"
 var embedMigrations embed.FS
 
 type config struct {
-	port    int
-	env     string
-	logFmt  string
-	dsn     string
-	migrate bool
+	port           int
+	env            string
+	logFmt         string
+	dsn            string
+	migrate        bool
+	trustedOrigins string
 }
 
 func main() {
@@ -43,6 +45,7 @@ func main() {
 	flag.StringVar(&cfg.logFmt, "logFmt", "text", "Log format (text|json)")
 	flag.StringVar(&cfg.dsn, "dsn", os.Getenv("POSTGRES_URL"), "Database URL")
 	flag.BoolVar(&cfg.migrate, "migrate", false, "Run database migrations and exit")
+	flag.StringVar(&cfg.trustedOrigins, "trusted-origins", "https://play.baduk.online", "Comma-separated list of trusted origins for CSRF protection")
 
 	flag.Parse()
 
@@ -74,21 +77,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	awsCfg, err := awsConfig.LoadDefaultConfig(context.Background())
+	ctx := context.Background()
+	awsCfg, err := awsConfig.LoadDefaultConfig(ctx)
 	if err != nil {
 		slog.Error("failed to load AWS config", "err", err)
 		os.Exit(1)
 	}
 	mailer := mail.NewSESMailer(awsCfg, db)
-	err = mailer.Ping()
+	err = mailer.Ping(ctx)
 	if err != nil {
 		slog.Error("failed to initialize SES client", "err", err.Error())
 		os.Exit(1)
 	}
-	api := api.NewAPI(cfg.env, version, db, mailer)
+	trustedOrigins := parseTrustedOrigins(cfg.trustedOrigins)
+	apiInstance := api.NewAPI(cfg.env, version, db, mailer, trustedOrigins)
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
-		Handler:      api.Routes(),
+		Handler:      apiInstance.Routes(),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
@@ -108,7 +113,7 @@ func main() {
 			errs <- err
 		}
 
-		api.Shutdown(true)
+		apiInstance.Shutdown(true)
 		errs <- nil
 	}()
 
@@ -135,4 +140,20 @@ func runMigrations(dsn string) error {
 	}
 
 	return nil
+}
+
+func parseTrustedOrigins(origins string) []string {
+	if origins == "" {
+		return []string{}
+	}
+
+	parts := strings.Split(origins, ",")
+	result := make([]string, 0, len(parts))
+	for _, origin := range parts {
+		trimmed := strings.TrimSpace(origin)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }

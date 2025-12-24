@@ -20,10 +20,10 @@ import (
 
 const (
 	// RegistrationTokenTTL is the amount of time a registration token is valid for.
-	RegistrationTokenTTL time.Duration = 15 * time.Minute
+	RegistrationTokenTTL = 30 * time.Minute
 
 	// SendEmailTimeout is the amount of time we give to our email sending process.
-	SendEmailTimeout time.Duration = 10 * time.Second
+	SendEmailTimeout = 10 * time.Second
 )
 
 // templateFS embeds email templates from the templates directory.
@@ -34,6 +34,8 @@ var templateFS embed.FS
 // Mailer defines the interface for sending transactional emails.
 type Mailer interface {
 	SendRegistrationEmail(ctx context.Context, user *data.User) error
+	SendAccountActivatedEmail(ctx context.Context, user *data.User) error
+	Ping(ctx context.Context) error
 }
 
 // SESMailer implements the Mailer interface using AWS SES.
@@ -44,19 +46,18 @@ type SESMailer struct {
 
 // NewSESMailer creates a new SESMailer instance with the provided AWS configuration and database.
 func NewSESMailer(awsCfg aws.Config, db *data.Database) *SESMailer {
-	ses := ses.NewFromConfig(awsCfg)
-	return &SESMailer{client: ses, db: db}
+	client := ses.NewFromConfig(awsCfg)
+	return &SESMailer{client: client, db: db}
 }
 
 // Ping verifies the SES client can connect to AWS by listing email identities.
-func (m *SESMailer) Ping() error {
-	ctx, cancel := context.WithTimeout(context.Background(), SendEmailTimeout)
+func (m *SESMailer) Ping(parent context.Context) error {
+	ctx, cancel := context.WithTimeout(parent, SendEmailTimeout)
 	defer cancel()
 	_, err := m.client.ListEmailIdentities(ctx, nil)
 	if err != nil {
 		return err
 	}
-	slog.Info("ses ping OK")
 	return err
 }
 
@@ -125,5 +126,61 @@ func (m *SESMailer) SendRegistrationEmail(parentCtx context.Context, user *data.
 		return err
 	}
 	slog.InfoContext(ctx, "sent registration email", "messageID", res.MessageId, "destination", user.Email)
+	return nil
+}
+
+// AccountActivatedEmailData holds the template data for account activation confirmation emails.
+type AccountActivatedEmailData struct {
+	Name  string
+	Email string
+}
+
+// SendAccountActivatedEmail sends a confirmation email after successful account activation.
+func (m *SESMailer) SendAccountActivatedEmail(parentCtx context.Context, user *data.User) error {
+	ctx, cancel := context.WithTimeout(parentCtx, SendEmailTimeout)
+	defer cancel()
+
+	subject := "Your baduk.online account has been activated!"
+	fromEmail := "no-reply@baduk.online"
+
+	bodyTmpl, err := template.New("account_activated.tmpl").ParseFS(templateFS, "templates/account_activated.tmpl")
+	if err != nil {
+		return err
+	}
+
+	emailData := &AccountActivatedEmailData{
+		Name:  user.Name,
+		Email: user.Email,
+	}
+
+	htmlBody := new(bytes.Buffer)
+	err = bodyTmpl.ExecuteTemplate(htmlBody, "htmlBody", emailData)
+	if err != nil {
+		return errors.Join(errors.New("failed to render email template"), err)
+	}
+	body := htmlBody.String()
+
+	res, err := m.client.SendEmail(ctx, &ses.SendEmailInput{
+		Destination: &sesTypes.Destination{
+			ToAddresses: []string{user.Email},
+		},
+		Content: &sesTypes.EmailContent{
+			Simple: &sesTypes.Message{
+				Body: &sesTypes.Body{
+					Html: &sesTypes.Content{
+						Data: &body,
+					},
+				},
+				Subject: &sesTypes.Content{
+					Data: &subject,
+				},
+			},
+		},
+		FromEmailAddress: &fromEmail,
+	})
+	if err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "sent account activated email", "messageID", res.MessageId, "destination", user.Email)
 	return nil
 }
