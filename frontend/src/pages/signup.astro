@@ -1,0 +1,379 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const { isAuthenticated } = Astro.locals;
+
+// If already authenticated, redirect to home
+if (isAuthenticated) {
+  return Astro.redirect("/");
+}
+---
+
+<BaseLayout title="Sign Up - baduk.online">
+  <div class="hero min-h-[80vh] bg-base-200 py-8">
+    <div class="hero-content flex-col w-full max-w-md">
+      <div class="text-center">
+        <h1 class="text-4xl font-bold mb-2">Create Account</h1>
+        <p class="text-base-content/70">
+          Join baduk.online and start playing Go!
+        </p>
+      </div>
+
+      <div class="card w-full bg-base-100 shadow-xl">
+        <div class="card-body">
+          <form id="signup-form">
+            <!-- Name Field -->
+            <div class="form-control w-full">
+              <label class="label" for="name">
+                <span class="label-text">Name</span>
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                placeholder="Your name"
+                class="input input-bordered w-full"
+                required
+                autocomplete="name"
+                maxlength="50"
+              />
+              <div class="label hidden" id="name-error">
+                <span class="label-text-alt text-error"></span>
+              </div>
+            </div>
+
+            <!-- Email Field -->
+            <div class="form-control w-full">
+              <label class="label" for="email">
+                <span class="label-text">Email</span>
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                placeholder="your@email.com"
+                class="input input-bordered w-full"
+                required
+                autocomplete="email"
+              />
+              <div class="label hidden" id="email-error">
+                <span class="label-text-alt text-error"></span>
+              </div>
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-control w-full">
+              <label class="label" for="password">
+                <span class="label-text">Password</span>
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="At least 8 characters"
+                class="input input-bordered w-full"
+                required
+                autocomplete="new-password"
+                minlength="8"
+                maxlength="72"
+              />
+              <div class="label" id="password-hint">
+                <span class="label-text-alt text-base-content/60"
+                  >Must be 8-72 characters long</span
+                >
+              </div>
+              <div class="label hidden" id="password-error">
+                <span class="label-text-alt text-error"></span>
+              </div>
+            </div>
+
+            <!-- Confirm Password Field -->
+            <div class="form-control w-full">
+              <label class="label" for="confirm-password">
+                <span class="label-text">Confirm Password</span>
+              </label>
+              <input
+                type="password"
+                id="confirm-password"
+                name="confirm-password"
+                placeholder="Re-enter your password"
+                class="input input-bordered w-full"
+                required
+                autocomplete="new-password"
+              />
+              <div class="label hidden" id="confirm-password-error">
+                <span class="label-text-alt text-error"></span>
+              </div>
+            </div>
+
+            <!-- General Error Message -->
+            <div
+              id="general-error"
+              class="alert alert-error hidden mt-4"
+              role="alert"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="stroke-current shrink-0 h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              <span id="general-error-message"></span>
+            </div>
+
+            <!-- Success Message -->
+            <div
+              id="success-message"
+              class="alert alert-success hidden mt-4"
+              role="status"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="stroke-current shrink-0 h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <div>
+                <div class="font-bold">Account created successfully!</div>
+                <div class="text-sm">
+                  Please check your email to activate your account.
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-control mt-6">
+              <button type="submit" class="btn btn-primary" id="submit-btn">
+                Sign Up
+              </button>
+            </div>
+          </form>
+
+          <!-- Sign In Link -->
+          <div class="divider">Already have an account?</div>
+          <a href="/signin" class="btn btn-outline btn-sm"> Sign In </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { signup } from "../lib/api";
+    import { APIError } from "../types/api";
+
+    const form = document.getElementById("signup-form") as HTMLFormElement;
+    const nameInput = document.getElementById("name") as HTMLInputElement;
+    const emailInput = document.getElementById("email") as HTMLInputElement;
+    const passwordInput = document.getElementById(
+      "password",
+    ) as HTMLInputElement;
+    const confirmPasswordInput = document.getElementById(
+      "confirm-password",
+    ) as HTMLInputElement;
+    const submitBtn = document.getElementById(
+      "submit-btn",
+    ) as HTMLButtonElement;
+    const generalError = document.getElementById("general-error")!;
+    const generalErrorMessage = document.getElementById(
+      "general-error-message",
+    )!;
+    const successMessage = document.getElementById("success-message")!;
+    const nameError = document.getElementById("name-error")!;
+    const emailError = document.getElementById("email-error")!;
+    const passwordError = document.getElementById("password-error")!;
+    const confirmPasswordError = document.getElementById(
+      "confirm-password-error",
+    )!;
+    const passwordHint = document.getElementById("password-hint")!;
+
+    // Clear all error messages
+    function clearErrors() {
+      generalError.classList.add("hidden");
+      successMessage.classList.add("hidden");
+      nameError.classList.add("hidden");
+      emailError.classList.add("hidden");
+      passwordError.classList.add("hidden");
+      confirmPasswordError.classList.add("hidden");
+      passwordHint.classList.remove("hidden");
+    }
+
+    // Show general error message
+    function showGeneralError(message: string) {
+      generalErrorMessage.textContent = message;
+      generalError.classList.remove("hidden");
+    }
+
+    // Show field-specific error
+    function showFieldError(
+      field: "name" | "email" | "password" | "confirm-password",
+      message: string,
+    ) {
+      let errorElement: HTMLElement;
+      let hintElement: HTMLElement | null = null;
+
+      switch (field) {
+        case "name":
+          errorElement = nameError;
+          break;
+        case "email":
+          errorElement = emailError;
+          break;
+        case "password":
+          errorElement = passwordError;
+          hintElement = passwordHint;
+          break;
+        case "confirm-password":
+          errorElement = confirmPasswordError;
+          break;
+      }
+
+      const errorSpan = errorElement.querySelector(
+        ".label-text-alt",
+      ) as HTMLSpanElement;
+      errorSpan.textContent = message;
+      errorElement.classList.remove("hidden");
+
+      // Hide hint if showing error
+      if (hintElement) {
+        hintElement.classList.add("hidden");
+      }
+    }
+
+    // Show success message
+    function showSuccess() {
+      successMessage.classList.remove("hidden");
+      // Disable the form
+      form.querySelectorAll("input, button").forEach((el) => {
+        (el as HTMLInputElement | HTMLButtonElement).disabled = true;
+      });
+    }
+
+    // Handle form submission
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearErrors();
+
+      const name = nameInput.value.trim();
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+
+      // Client-side validation
+      let hasError = false;
+
+      if (!name) {
+        showFieldError("name", "Name is required");
+        hasError = true;
+      } else if (name.length > 50) {
+        showFieldError("name", "Name must not be more than 50 characters");
+        hasError = true;
+      }
+
+      if (!email) {
+        showFieldError("email", "Email is required");
+        hasError = true;
+      }
+
+      if (!password) {
+        showFieldError("password", "Password is required");
+        hasError = true;
+      } else if (password.length < 8) {
+        showFieldError(
+          "password",
+          "Password must be at least 8 characters long",
+        );
+        hasError = true;
+      } else if (password.length > 72) {
+        showFieldError(
+          "password",
+          "Password must not be more than 72 characters long",
+        );
+        hasError = true;
+      }
+
+      if (password !== confirmPassword) {
+        showFieldError("confirm-password", "Passwords do not match");
+        hasError = true;
+      }
+
+      if (hasError) {
+        return;
+      }
+
+      // Disable submit button during request
+      submitBtn.disabled = true;
+      submitBtn.classList.add("loading");
+
+      try {
+        await signup(name, email, password);
+
+        // Success! Show success message
+        showSuccess();
+      } catch (error) {
+        if (error instanceof APIError) {
+          // Handle validation errors (422)
+          if (error.statusCode === 422 && error.errors) {
+            if (error.errors.name) {
+              showFieldError("name", error.errors.name);
+            }
+            if (error.errors.email) {
+              showFieldError("email", error.errors.email);
+            }
+            if (error.errors.password) {
+              showFieldError("password", error.errors.password);
+            }
+            // If no field-specific errors, show general message
+            if (
+              !error.errors.name &&
+              !error.errors.email &&
+              !error.errors.password
+            ) {
+              showGeneralError(error.message);
+            }
+          }
+          // Handle duplicate email (409)
+          else if (error.statusCode === 409) {
+            showFieldError(
+              "email",
+              "A user with this email address already exists",
+            );
+          }
+          // Handle rate limiting (429)
+          else if (error.statusCode === 429) {
+            showGeneralError(
+              "Too many signup attempts. Please try again later.",
+            );
+          }
+          // Handle other API errors
+          else {
+            showGeneralError(error.message);
+          }
+        } else {
+          // Network or other errors
+          showGeneralError(
+            "Unable to connect to the server. Please try again.",
+          );
+        }
+      } finally {
+        // Re-enable submit button (unless success)
+        if (successMessage.classList.contains("hidden")) {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove("loading");
+        }
+      }
+    });
+  </script>
+</BaseLayout>

@@ -72,6 +72,16 @@ type mockMailer struct {
 	mu         sync.Mutex
 }
 
+func (m *mockMailer) SendAccountActivatedEmail(_ context.Context, _ *data.User) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (m *mockMailer) Ping(_ context.Context) error {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (m *mockMailer) SendRegistrationEmail(_ context.Context, user *data.User) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -90,9 +100,9 @@ func (m *mockMailer) GetLastTokenForUser(ctx context.Context, userID int64) (str
 func TestUserRegistrationIntegration(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
-
+	origins := []string{"http://localhost:3000"}
 	mailer := &mockMailer{db: db}
-	api := NewAPI("test", "1.0.0", db, mailer)
+	api := NewAPI("test", "1.0.0", db, mailer, origins)
 	server := httptest.NewServer(api.Routes())
 	defer server.Close()
 
@@ -232,7 +242,8 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 	defer cleanup()
 
 	mailer := &mockMailer{db: db}
-	api := NewAPI("test", "1.0.0", db, mailer)
+	origins := []string{"http://localhost:3000"}
+	api := NewAPI("test", "1.0.0", db, mailer, origins)
 	server := httptest.NewServer(api.Routes())
 	defer server.Close()
 

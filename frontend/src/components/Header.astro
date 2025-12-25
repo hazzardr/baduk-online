@@ -146,16 +146,12 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
 </header>
 
 <script is:inline>
-  // Theme controller - sync with localStorage and system preference
+  // Theme controller - sync with localStorage
   // This script runs  to prevent FOUC (Flash of Unstyled Content)
   (function () {
     const initTheme = () => {
       const savedTheme = localStorage.getItem("theme");
-      const systemPrefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)",
-      ).matches;
-      const isDark =
-        savedTheme === "dark" || (!savedTheme && systemPrefersDark);
+      const isDark = savedTheme === "dark";
 
       document.documentElement.setAttribute(
         "data-theme",
