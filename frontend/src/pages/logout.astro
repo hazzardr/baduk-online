@@ -1,0 +1,59 @@
+---
+import { logout } from "../lib/api";
+
+// Server-side logout action
+if (Astro.request.method === "POST") {
+  try {
+    await logout();
+  } catch (error) {
+    console.error("Logout error:", error);
+    // Continue with redirect even if logout fails
+  }
+  return Astro.redirect("/");
+}
+
+// If accessed via GET, show logout confirmation
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const { isAuthenticated, userName } = Astro.locals;
+---
+
+<BaseLayout title="Logout - baduk.online">
+  <div class="hero min-h-[80vh] bg-base-200">
+    <div class="hero-content text-center">
+      <div class="max-w-md">
+        {
+          isAuthenticated ? (
+            <>
+              <h1 class="text-4xl font-bold mb-4">Sign Out</h1>
+              <p class="mb-8">
+                You are currently signed in as <strong>{userName}</strong>.
+              </p>
+              <form method="POST" class="flex gap-4 justify-center">
+                <button type="submit" class="btn btn-primary">
+                  Sign Out
+                </button>
+                <a href="/" class="btn btn-outline">
+                  Cancel
+                </a>
+              </form>
+            </>
+          ) : (
+            <>
+              <h1 class="text-4xl font-bold mb-4">Signed Out</h1>
+              <p class="mb-8">You have been successfully signed out.</p>
+              <div class="flex gap-4 justify-center">
+                <a href="/signin" class="btn btn-primary">
+                  Sign In Again
+                </a>
+                <a href="/" class="btn btn-outline">
+                  Go Home
+                </a>
+              </div>
+            </>
+          )
+        }
+      </div>
+    </div>
+  </div>
+</BaseLayout>

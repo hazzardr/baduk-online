@@ -890,6 +890,7 @@ pnpm vitest:watch  # Unit tests in watch mode
 3. Use BaseLayout or create custom layout
 4. Add components in `src/components/` as needed
 5. Write tests for utilities: `utils.test.ts`
+6. Ensure linting passes `pnpm run lint`
 
 **Example Page**:
 

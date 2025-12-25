@@ -22,26 +22,26 @@
     - [x] Update routes in `cmd/api/routes.go`
       - Add `POST /api/v1/login` with rate limiting and CSRF protection
       - Add `POST /api/v1/logout` with CSRF protection
-  - **Phase 2: Frontend - Build Login UI**
-    - [ ] Create login page at `frontend/src/pages/signin.astro`
+  - **Phase 2: Frontend - Build Login UI** ✅
+    - [x] Create login page at `frontend/src/pages/signin.astro`
       - Form with email and password fields
       - Client-side validation
       - Error message display
       - Link to signup page
-    - [ ] Create API client utilities at `frontend/src/lib/api.ts`
+    - [x] Create API client utilities at `frontend/src/lib/api.ts`
       - `login(email, password)` function
       - `logout()` function
       - `getCurrentUser()` function
       - CSRF token handling from cookies
       - Error handling
-    - [ ] Add authentication middleware at `frontend/src/middleware/auth.ts`
+    - [x] Add authentication middleware at `frontend/src/middleware/auth.ts`
       - Check session server-side
       - Fetch user data from API
       - Pass `isAuthenticated` and `userName` to pages
-    - [ ] Create logout page at `frontend/src/pages/logout.astro`
+    - [x] Create logout page at `frontend/src/pages/logout.astro`
       - Server-side logout action
       - Redirect to home page
-    - [ ] Add TypeScript types at `frontend/src/types/api.ts`
+    - [x] Add TypeScript types at `frontend/src/types/api.ts`
       - `User` interface
       - API response types
       - Error types
