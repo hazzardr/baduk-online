@@ -4,19 +4,15 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import "../styles/global.css";
 
-interface Props {
-  title?: string;
-  description?: string;
-  isAuthenticated?: boolean;
-  userName?: string;
-}
-
 const {
   title = "baduk.online - Play Go Online",
   description = "Play Go (Baduk, Weiqi) online with players around the world. Free, open-source, and modern interface.",
+} = Astro.props;
+
+const {
   isAuthenticated = false,
   userName = "",
-} = Astro.props;
+} = Astro.locals;
 ---
 
 <!doctype html>

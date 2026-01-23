@@ -49,7 +49,7 @@ func main() {
 	flag.StringVar(
 		&cfg.trustedOrigins,
 		"trusted-origins",
-		"https://play.baduk.online",
+		"https://play.baduk.online,http://localhost:5173,http://localhost:4321,http://localhost:4000",
 		"Comma-separated list of trusted origins for CSRF protection",
 	)
 

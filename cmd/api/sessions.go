@@ -93,6 +93,14 @@ func (api *API) authenticateUser(w http.ResponseWriter, r *http.Request, email, 
 		return nil
 	}
 
+	// Check if user is activated
+	if !user.Validated {
+		slog.Warn("failed login attempt", "ip", r.RemoteAddr, "email", email, "error", "account not activated")
+		v.AddError("email", "your account has not been activated yet. Please check your email.")
+		api.failedValidationResponse(w, r, v.Errors)
+		return nil
+	}
+
 	return user
 }
 

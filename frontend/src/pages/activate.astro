@@ -1,0 +1,94 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const { isAuthenticated } = Astro.locals;
+
+// If already authenticated and validated, redirect to home
+if (isAuthenticated && Astro.locals.userValidated) {
+  return Astro.redirect("/");
+}
+---
+
+<BaseLayout title="Activate Account - baduk.online">
+  <div class="hero min-h-[80vh] bg-base-200">
+    <div class="hero-content text-center">
+      <div class="max-w-md w-full">
+        <div id="activation-status">
+          <h1 class="text-4xl font-bold mb-4">Activating Account...</h1>
+          <div class="flex justify-center my-8">
+            <span class="loading loading-spinner loading-lg text-primary"></span>
+          </div>
+          <p>Please wait while we verify your activation code.</p>
+        </div>
+
+        <!-- Success Message -->
+        <div id="success-message" class="hidden">
+          <div class="alert alert-success shadow-lg mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>Account activated successfully!</span>
+          </div>
+          <h1 class="text-4xl font-bold mb-4">Welcome aboard!</h1>
+          <p class="mb-8">Your account is now active. You can now sign in and start playing.</p>
+          <a href="/signin" class="btn btn-primary">Sign In</a>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error-message" class="hidden">
+          <div class="alert alert-error shadow-lg mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span id="error-text">Invalid or expired activation code.</span>
+          </div>
+          <h1 class="text-4xl font-bold mb-4">Activation Failed</h1>
+          <p class="mb-8">We couldn't activate your account. The link might be expired or already used.</p>
+          <div class="flex gap-4 justify-center">
+            <a href="/signup" class="btn btn-primary">Try Signing Up Again</a>
+            <a href="/" class="btn btn-outline">Go Home</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { activate } from "../lib/api";
+    import { APIError } from "../types/api";
+
+    async function handleActivation() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('code');
+
+      const statusEl = document.getElementById('activation-status')!;
+      const successEl = document.getElementById('success-message')!;
+      const errorEl = document.getElementById('error-message')!;
+      const errorTextEl = document.getElementById('error-text')!;
+
+      if (!token) {
+        statusEl.classList.add('hidden');
+        errorEl.classList.remove('hidden');
+        errorTextEl.textContent = "No activation code provided.";
+        return;
+      }
+
+      try {
+        await activate(token);
+        statusEl.classList.add('hidden');
+        successEl.classList.remove('hidden');
+      } catch (error) {
+        statusEl.classList.add('hidden');
+        errorEl.classList.remove('hidden');
+        if (error instanceof APIError) {
+          errorTextEl.textContent = error.message;
+        } else {
+          errorTextEl.textContent = "A network error occurred. Please try again.";
+        }
+      }
+    }
+
+    // Run activation on page load
+    document.addEventListener('astro:page-load', handleActivation);
+    // Also run immediately in case astro:page-load already fired or isn't used
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      handleActivation();
+    }
+  </script>
+</BaseLayout>

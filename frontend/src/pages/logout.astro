@@ -4,12 +4,21 @@ import { logout } from "../lib/api";
 // Server-side logout action
 if (Astro.request.method === "POST") {
   try {
-    await logout();
+    const cookies = Astro.request.headers.get("cookie") || "";
+    const { headers } = await logout(cookies);
+    
+    // Forward Set-Cookie headers from API to the browser
+    const response = Astro.redirect("/");
+    const setCookies = headers.getSetCookie();
+    for (const cookie of setCookies) {
+      response.headers.append("set-cookie", cookie);
+    }
+    return response;
   } catch (error) {
     console.error("Logout error:", error);
     // Continue with redirect even if logout fails
+    return Astro.redirect("/");
   }
-  return Astro.redirect("/");
 }
 
 // If accessed via GET, show logout confirmation

@@ -25,22 +25,20 @@ func (api *API) Routes() http.Handler {
 
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(api.csrfMiddleware(api.trustedOrigins))
+
 		r.Get("/health", api.handleHealthCheck)
 
-		// Public endpoints (no CSRF, but rate limited)
+		// Public endpoints (rate limited)
 		r.With(api.rateLimitMiddleware(userCreationRateLimiter)).Post("/users", api.handleCreateUser)
 
-		// Protected endpoints (CSRF + rate limiting where applicable)
-		r.Group(func(r chi.Router) {
-			r.Use(api.csrfMiddleware(api.trustedOrigins))
+		// Protected endpoints (rate limiting where applicable)
+		r.Post("/users/register", api.handleSendRegistrationEmail)
+		r.With(api.rateLimitMiddleware(activationRateLimiter)).Put("/users/activated", api.handleRegisterUser)
 
-			r.Post("/users/register", api.handleSendRegistrationEmail)
-			r.With(api.rateLimitMiddleware(activationRateLimiter)).Put("/users/activated", api.handleRegisterUser)
-
-			// Login/Logout
-			r.With(api.rateLimitMiddleware(loginRateLimiter)).Post("/login", api.handleLogin)
-			r.Post("/logout", api.handleLogout)
-		})
+		// Login/Logout
+		r.With(api.rateLimitMiddleware(loginRateLimiter)).Post("/login", api.handleLogin)
+		r.Post("/logout", api.handleLogout)
 
 		r.Get("/user", api.handleGetLoggedInUser)
 	})

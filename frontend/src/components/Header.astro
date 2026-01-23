@@ -101,53 +101,55 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
       </svg>
     </label>
 
-    <!-- User menu when authenticated -->
-    {
-      isAuthenticated ? (
-        <div class="dropdown dropdown-end">
-          <div
-            tabIndex={0}
-            role="button"
-            class="btn btn-ghost btn-circle avatar placeholder"
-            aria-label="User menu"
-          >
-            <div class="bg-neutral text-neutral-content rounded-full w-10">
-              <span class="text-xl">{userName.charAt(0).toUpperCase()}</span>
+    <!-- User menu container -->
+    <div id="auth-container">
+      {
+        isAuthenticated ? (
+          <div class="dropdown dropdown-end">
+            <div
+              tabIndex={0}
+              role="button"
+              class="btn btn-ghost btn-circle avatar placeholder"
+              aria-label="User menu"
+            >
+              <div class="bg-neutral text-neutral-content rounded-full w-10">
+                <span class="text-xl">{userName.charAt(0).toUpperCase()}</span>
+              </div>
             </div>
+            <ul class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+              <li class="menu-title">{userName}</li>
+              <li>
+                <a href="/profile">Profile</a>
+              </li>
+              <li>
+                <a href="/settings">Settings</a>
+              </li>
+              <li>
+                <hr class="my-2" />
+              </li>
+              <li>
+                <a href="/logout">Logout</a>
+              </li>
+            </ul>
           </div>
-          <ul class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-            <li class="menu-title">{userName}</li>
-            <li>
-              <a href="/profile">Profile</a>
-            </li>
-            <li>
-              <a href="/settings">Settings</a>
-            </li>
-            <li>
-              <hr class="my-2" />
-            </li>
-            <li>
-              <a href="/logout">Logout</a>
-            </li>
-          </ul>
-        </div>
-      ) : (
-        <div class="hidden lg:flex gap-2">
-          <a href="/signin" class="btn btn-ghost">
-            Sign In
-          </a>
-          <a href="/signup" class="btn btn-primary">
-            Sign Up
-          </a>
-        </div>
-      )
-    }
+        ) : (
+          <div class="hidden lg:flex gap-2">
+            <a href="/signin" class="btn btn-ghost">
+              Sign In
+            </a>
+            <a href="/signup" class="btn btn-primary">
+              Sign Up
+            </a>
+          </div>
+        )
+      }
+    </div>
   </div>
 </header>
 
 <script is:inline>
   // Theme controller - sync with localStorage
-  // This script runs  to prevent FOUC (Flash of Unstyled Content)
+  // This script runs early to prevent FOUC (Flash of Unstyled Content)
   (function () {
     const initTheme = () => {
       const savedTheme = localStorage.getItem("theme");
@@ -180,4 +182,49 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
       }
     });
   })();
+</script>
+
+<script>
+  import { getCurrentUser } from "../lib/api";
+
+  async function updateAuthUI() {
+    const container = document.getElementById("auth-container");
+    if (!container) return;
+
+    // If there's no session cookie, we are definitely logged out
+    if (!document.cookie.includes("session_id=")) return;
+
+    try {
+      const { user } = await getCurrentUser();
+      if (user) {
+        // Replace container content with user menu
+        container.innerHTML = `
+          <div class="dropdown dropdown-end">
+            <div
+              tabIndex="0"
+              role="button"
+              class="btn btn-ghost btn-circle avatar placeholder"
+              aria-label="User menu"
+            >
+              <div class="bg-neutral text-neutral-content rounded-full w-10">
+                <span class="text-xl">${user.name.charAt(0).toUpperCase()}</span>
+              </div>
+            </div>
+            <ul class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+              <li class="menu-title">${user.name}</li>
+              <li><a href="/profile">Profile</a></li>
+              <li><a href="/settings">Settings</a></li>
+              <li><hr class="my-2" /></li>
+              <li><a href="/logout">Logout</a></li>
+            </ul>
+          </div>
+        `;
+      }
+    } catch (error) {
+      console.error("Failed to hydrate auth UI:", error);
+    }
+  }
+
+  // Run on page load and navigation
+  document.addEventListener("astro:page-load", updateAuthUI);
 </script>
