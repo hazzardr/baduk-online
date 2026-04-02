@@ -102,7 +102,7 @@ func TestUserRegistrationIntegration(t *testing.T) {
 	defer cleanup()
 	origins := []string{"http://localhost:3000"}
 	mailer := &mockMailer{db: db}
-	api := NewAPI("test", "1.0.0", db, mailer, origins)
+	api := New("test", "1.0.0", db, mailer, origins)
 	server := httptest.NewServer(api.Routes())
 	defer server.Close()
 
@@ -243,7 +243,7 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 
 	mailer := &mockMailer{db: db}
 	origins := []string{"http://localhost:3000"}
-	api := NewAPI("test", "1.0.0", db, mailer, origins)
+	api := New("test", "1.0.0", db, mailer, origins)
 	server := httptest.NewServer(api.Routes())
 	defer server.Close()
 

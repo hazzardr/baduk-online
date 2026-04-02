@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"embed"
 	"errors"
 	"flag"
@@ -17,8 +16,6 @@ import (
 
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/charmbracelet/log"
-	"github.com/pressly/goose/v3"
-
 	"github.com/hazzardr/baduk-online/cmd/api"
 	"github.com/hazzardr/baduk-online/internal/data"
 	"github.com/hazzardr/baduk-online/internal/mail"
@@ -66,7 +63,7 @@ func main() {
 	mailer := configureMailer(ctx, db)
 
 	trustedOrigins := parseTrustedOrigins(cfg.trustedOrigins)
-	apiInstance := api.NewAPI(cfg.env, version, db, mailer, trustedOrigins)
+	apiInstance := api.New(cfg.env, version, db, mailer, trustedOrigins)
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
 		Handler:      apiInstance.Routes(),
@@ -118,7 +115,7 @@ func configureMailer(ctx context.Context, db *data.Database) *mail.SESMailer {
 }
 func configureDB(cfg config) *data.Database {
 	if cfg.migrate {
-		if err := runMigrations(cfg.dsn); err != nil {
+		if err := data.RunMigrations(cfg.dsn, embedMigrations); err != nil {
 			slog.Error("migration failed", "err", err)
 			os.Exit(1)
 		}
@@ -132,25 +129,6 @@ func configureDB(cfg config) *data.Database {
 		os.Exit(1)
 	}
 	return db
-}
-func runMigrations(dsn string) error {
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
-	}
-	defer db.Close()
-
-	if err := goose.SetDialect("postgres"); err != nil {
-		return fmt.Errorf("failed to set dialect: %w", err)
-	}
-
-	goose.SetBaseFS(embedMigrations)
-
-	if err := goose.Up(db, "migrations"); err != nil {
-		return fmt.Errorf("failed to run migrations: %w", err)
-	}
-
-	return nil
 }
 
 func parseTrustedOrigins(origins string) []string {

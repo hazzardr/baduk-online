@@ -26,7 +26,7 @@ type API struct {
 	healthCachedAt time.Time
 }
 
-func NewAPI(environment, version string, db *data.Database, mailer mail.Mailer, trustedOrigins []string) *API {
+func New(environment, version string, db *data.Database, mailer mail.Mailer, trustedOrigins []string) *API {
 	sm := scs.New()
 	sm.Lifetime = 24 * time.Hour
 	sm.Cookie.Name = "session_id"
