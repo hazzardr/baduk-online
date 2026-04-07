@@ -1,24 +1,31 @@
-package tests
+package main
 
 import (
 	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/hazzardr/baduk-online/cmd/api"
 	"github.com/hazzardr/baduk-online/internal/data"
+	"github.com/hazzardr/baduk-online/tests"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/nalgeon/be"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func TestAPIStandsUp(t *testing.T) {
+var testDB *data.Database
+var testContainer testcontainers.Container
+
+func TestMain(m *testing.M) {
 	ctx := context.Background()
 	user := "baduk_online"
 	pass := "not-real"
+
 	pg, err := testcontainers.Run(ctx, "postgres:17.5-alpine",
 		testcontainers.WithEnv(map[string]string{
 			"POSTGRES_DB":       user,
@@ -31,39 +38,67 @@ func TestAPIStandsUp(t *testing.T) {
 				WithOccurrence(2).
 				WithStartupTimeout(30*time.Second)),
 	)
-	defer testcontainers.CleanupContainer(t, pg)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
-	err = pg.Start(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	testContainer = pg
+
 	endpoint, err := pg.Endpoint(ctx, "")
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
+	}
+	dsn := fmt.Sprintf(
+		"postgres://%s:%s@%s/%s?sslmode=disable",
+		user, pass, endpoint, user,
+	)
+	testDB, err = data.New(dsn)
+	if err != nil {
+		panic(err)
+	}
+	err = data.RunMigrations(dsn, embedMigrations)
+	if err != nil {
+		panic(err)
 	}
 
-	db, err := data.New(
-		fmt.Sprintf(
-			"postgres://%s:%s@%s/%s?sslmode=disable",
-			user,
-			pass,
-			endpoint,
-			user,
-		))
+	// Run all tests
+	code := m.Run()
+
+	// Cleanup
+	testDB.Close()
+	testContainer.Terminate(ctx)
+
+	os.Exit(code)
+}
+
+// cleanupDB truncates all tables to reset the database state between tests
+func cleanupDB(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+
+	// Truncate all tables in the correct order to handle foreign key constraints
+	_, err := testDB.Pool.Exec(ctx, `
+		TRUNCATE TABLE registration CASCADE;
+		TRUNCATE TABLE sessions CASCADE;
+		TRUNCATE TABLE users CASCADE;
+	`)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to clean database: %v", err)
 	}
-	defer db.Close()
-	err = db.Ping(ctx)
+}
+
+func TestAPIStandsUp(t *testing.T) {
+	// Clean database before test
+	cleanupDB(t)
+
+	ctx := context.Background()
+	err := testDB.Ping(ctx)
 	be.Err(t, err, nil)
 
-	mockMailer := NewMockMailer()
+	mockMailer := tests.NewMockMailer()
 	testAPI := api.New(
-		"production",
+		"test",
 		"0.1.0-testing",
-		db,
+		testDB,
 		&mockMailer,
 		[]string{"http://localhost:3000"},
 	)

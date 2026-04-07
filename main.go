@@ -122,8 +122,12 @@ func configureDB(cfg config) *data.Database {
 		slog.Info("migrations completed successfully")
 		os.Exit(0)
 	}
-
 	db, err := data.New(cfg.dsn)
+	if err != nil {
+		slog.Error("db init failed", slog.Any("err", err))
+		os.Exit(1)
+	}
+	err = db.Ping(context.Background())
 	if err != nil {
 		slog.Error("db init failed", slog.Any("err", err))
 		os.Exit(1)

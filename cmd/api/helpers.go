@@ -127,8 +127,6 @@ func (api *API) csrfFailureResponse(w http.ResponseWriter, r *http.Request) {
 	api.errorResponse(w, r, http.StatusForbidden, "CSRF check failed")
 }
 
-// Begin sync helpers
-
 // background will launch the given function on a background goRoutine with recovery handlers.
 func (api *API) background(fn func()) {
 	withRecoverPanic := func(caller func()) {
