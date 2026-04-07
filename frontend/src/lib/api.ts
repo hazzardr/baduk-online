@@ -50,7 +50,10 @@ async function apiRequest<T>(
   }
 
   // Use absolute URL on server, relative on client
-  const baseUrl = (typeof window === "undefined" || !window.location.host) ? SERVER_API_BASE_URL : API_BASE_URL;
+  const baseUrl =
+    typeof window === "undefined" || !window.location.host
+      ? SERVER_API_BASE_URL
+      : API_BASE_URL;
   const response = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
     headers,
@@ -97,19 +100,29 @@ export async function login(
   password: string,
   clientCookies?: string,
 ): Promise<{ data: LoginResponse; headers: Headers }> {
-  return apiRequest<LoginResponse>("/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  }, clientCookies);
+  return apiRequest<LoginResponse>(
+    "/login",
+    {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    },
+    clientCookies,
+  );
 }
 
 /**
  * Logout the current user
  */
-export async function logout(clientCookies?: string): Promise<{ data: LogoutResponse; headers: Headers }> {
-  return apiRequest<LogoutResponse>("/logout", {
-    method: "POST",
-  }, clientCookies);
+export async function logout(
+  clientCookies?: string,
+): Promise<{ data: LogoutResponse; headers: Headers }> {
+  return apiRequest<LogoutResponse>(
+    "/logout",
+    {
+      method: "POST",
+    },
+    clientCookies,
+  );
 }
 
 /**
@@ -119,9 +132,13 @@ export async function getCurrentUser(
   clientCookies?: string,
 ): Promise<{ user: User | null; headers?: Headers }> {
   try {
-    const { data, headers } = await apiRequest<User>("/user", {
-      method: "GET",
-    }, clientCookies);
+    const { data, headers } = await apiRequest<User>(
+      "/user",
+      {
+        method: "GET",
+      },
+      clientCookies,
+    );
     return { user: data, headers };
   } catch (error) {
     if (error instanceof APIError && error.statusCode === 401) {
@@ -151,8 +168,12 @@ export async function signup(
   password: string,
   clientCookies?: string,
 ): Promise<{ data: User; headers: Headers }> {
-  return apiRequest<User>("/users", {
-    method: "POST",
-    body: JSON.stringify({ name, email, password }),
-  }, clientCookies);
+  return apiRequest<User>(
+    "/users",
+    {
+      method: "POST",
+      body: JSON.stringify({ name, email, password }),
+    },
+    clientCookies,
+  );
 }

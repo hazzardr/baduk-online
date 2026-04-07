@@ -4,7 +4,7 @@ import { getCurrentUser } from "../lib/api";
 export const onRequest = defineMiddleware(async (context, next) => {
   // Get cookies from the request
   const cookies = context.request.headers.get("cookie") || "";
-  
+
   // Skip API call if no session cookie is present
   // This avoids errors during static build and unnecessary calls for guests
   if (!cookies.includes("session_id=")) {

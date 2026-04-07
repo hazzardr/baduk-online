@@ -6,7 +6,7 @@ if (Astro.request.method === "POST") {
   try {
     const cookies = Astro.request.headers.get("cookie") || "";
     const { headers } = await logout(cookies);
-    
+
     // Forward Set-Cookie headers from API to the browser
     const response = Astro.redirect("/");
     const setCookies = headers.getSetCookie();
