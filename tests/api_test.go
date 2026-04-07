@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -66,7 +67,11 @@ func TestAPIStandsUp(t *testing.T) {
 		&mockMailer,
 		[]string{"http://localhost:3000"},
 	)
-	httptest.NewRequest()
-	testAPI.Routes().h
-	testAPI.Shutdown(true)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil).WithContext(ctx)
+	w := httptest.NewRecorder()
+	testAPI.Routes().ServeHTTP(w, req)
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("got %d, want %d", resp.StatusCode, http.StatusOK)
+	}
 }
