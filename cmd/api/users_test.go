@@ -79,12 +79,34 @@ func (m *mockMailer) SendRegistrationEmail(_ context.Context, user *data.User) e
 	return nil
 }
 
+// GetLastTokenForUser creates a new registration token for a user, used in tests to
+// simulate the token that would have been emailed.
 func (m *mockMailer) GetLastTokenForUser(ctx context.Context, userID int64) (string, error) {
 	token, err := m.db.Registration.NewToken(ctx, userID, 15*time.Minute)
 	if err != nil {
 		return "", err
 	}
 	return token.Plaintext, nil
+}
+
+// waitForEmails polls until at least count emails have been recorded or the timeout expires.
+// It acquires the lock on each check, making it safe to call concurrently with the mock methods.
+func (m *mockMailer) waitForEmails(t *testing.T, count int, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		m.mu.Lock()
+		n := len(m.emailsSent)
+		m.mu.Unlock()
+		if n >= count {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	m.mu.Lock()
+	n := len(m.emailsSent)
+	m.mu.Unlock()
+	t.Errorf("timed out waiting for %d emails, got %d", count, n)
 }
 
 func TestUserRegistrationIntegration(t *testing.T) {
@@ -131,12 +153,8 @@ func TestUserRegistrationIntegration(t *testing.T) {
 			t.Error("expected user to be unvalidated")
 		}
 
-		mailer.mu.Lock()
-		emailCount := len(mailer.emailsSent)
-		mailer.mu.Unlock()
-		if emailCount != 1 {
-			t.Errorf("expected 1 email sent, got %d", emailCount)
-		}
+		// Wait for the background goroutine to finish sending the registration email.
+		mailer.waitForEmails(t, 1, 2*time.Second)
 
 		dbUser, err := db.Users.GetByEmail(context.Background(), "test@example.com")
 		if err != nil {
@@ -263,6 +281,9 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 			t.Error("user should not be validated yet")
 		}
 
+		// Wait for registration email background goroutine.
+		mailer.waitForEmails(t, 1, 2*time.Second)
+
 		dbUser, err := db.Users.GetByEmail(context.Background(), "tokentest@example.com")
 		if err != nil {
 			t.Fatalf("failed to get user from database: %s", err)
@@ -301,6 +322,9 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 		if validated, ok := activatedUser["validated"].(bool); !ok || !validated {
 			t.Error("user should be validated after activation")
 		}
+
+		// Only one email is sent (registration); activation does not send a second email.
+		mailer.waitForEmails(t, 1, 2*time.Second)
 
 		dbUser, err = db.Users.GetByEmail(context.Background(), "tokentest@example.com")
 		if err != nil {
