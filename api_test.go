@@ -13,7 +13,6 @@ import (
 	"github.com/hazzardr/baduk-online/internal/data"
 	"github.com/hazzardr/baduk-online/tests"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/nalgeon/be"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -60,6 +59,11 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
+	err = testDB.Ping(ctx)
+	if err != nil {
+		panic(err)
+	}
+
 	// Run all tests
 	code := m.Run()
 
@@ -75,7 +79,6 @@ func cleanupDB(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
 
-	// Truncate all tables in the correct order to handle foreign key constraints
 	_, err := testDB.Pool.Exec(ctx, `
 		TRUNCATE TABLE registration CASCADE;
 		TRUNCATE TABLE sessions CASCADE;
@@ -87,13 +90,8 @@ func cleanupDB(t *testing.T) {
 }
 
 func TestAPIStandsUp(t *testing.T) {
-	// Clean database before test
+	// Arrange
 	cleanupDB(t)
-
-	ctx := context.Background()
-	err := testDB.Ping(ctx)
-	be.Err(t, err, nil)
-
 	mockMailer := tests.NewMockMailer()
 	testAPI := api.New(
 		"test",
@@ -102,11 +100,40 @@ func TestAPIStandsUp(t *testing.T) {
 		&mockMailer,
 		[]string{"http://localhost:3000"},
 	)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil).WithContext(ctx)
+
+	// Act
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil).WithContext(context.Background())
 	w := httptest.NewRecorder()
 	testAPI.Routes().ServeHTTP(w, req)
+
+	// Assert
 	resp := w.Result()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("got %d, want %d", resp.StatusCode, http.StatusOK)
 	}
+}
+
+func TestCreateAndRegisterUser(t *testing.T) {
+	// Arrange
+	cleanupDB(t)
+	mockMailer := tests.NewMockMailer()
+	testAPI := api.New(
+		"test",
+		"0.1.0-testing",
+		testDB,
+		&mockMailer,
+		[]string{"http://localhost:3000"},
+	)
+
+	// Act
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/users", nil).WithContext(context.Background())
+	w := httptest.NewRecorder()
+	testAPI.Routes().ServeHTTP(w, req)
+
+	// Assert
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("got %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+
 }

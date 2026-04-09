@@ -29,10 +29,8 @@ func (api *API) Routes() http.Handler {
 
 		r.Get("/health", api.handleHealthCheck)
 
-		// Public endpoints (rate limited)
+		// Public endpoints
 		r.With(api.rateLimitMiddleware(userCreationRateLimiter)).Post("/users", api.handleCreateUser)
-
-		// Protected endpoints (rate limiting where applicable)
 		r.Post("/users/register", api.handleSendRegistrationEmail)
 		r.With(api.rateLimitMiddleware(activationRateLimiter)).Put("/users/activated", api.handleRegisterUser)
 
