@@ -5,7 +5,7 @@
 /* Light theme - inspired by traditional wooden go boards */
 @plugin "daisyui/theme" {
   name: "light";
-  default: false;
+  default: true;
   prefersdark: false;
   color-scheme: "light";
   --color-base-100: #f6f0d7; /* Kaya wood color */

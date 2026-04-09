@@ -1,0 +1,215 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const { isAuthenticated } = Astro.locals;
+
+// If already authenticated, redirect to home
+if (isAuthenticated) {
+  return Astro.redirect("/");
+}
+---
+
+<BaseLayout title="Sign In - baduk.online">
+  <div class="hero min-h-[80vh] bg-base-200">
+    <div class="hero-content flex-col w-full max-w-md">
+      <div class="text-center">
+        <h1 class="text-4xl font-bold mb-2">Sign In</h1>
+        <p class="text-base-content/70">
+          Welcome back! Sign in to continue playing.
+        </p>
+      </div>
+
+      <div class="card w-full bg-base-100 shadow-xl">
+        <div class="card-body">
+          <form id="signin-form">
+            <!-- Email Field -->
+            <div class="form-control w-full">
+              <label class="label" for="email">
+                <span class="label-text">Email</span>
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                placeholder="your@email.com"
+                class="input input-bordered w-full"
+                required
+                autocomplete="email"
+              />
+              <div class="label hidden" id="email-error">
+                <span class="label-text-alt text-error"></span>
+              </div>
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-control w-full">
+              <label class="label" for="password">
+                <span class="label-text">Password</span>
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Enter your password"
+                class="input input-bordered w-full"
+                required
+                autocomplete="current-password"
+              />
+              <div class="label hidden" id="password-error">
+                <span class="label-text-alt text-error"></span>
+              </div>
+            </div>
+
+            <!-- General Error Message -->
+            <div
+              id="general-error"
+              class="alert alert-error hidden mt-4"
+              role="alert"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="stroke-current shrink-0 h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              <span id="general-error-message"></span>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-control mt-6">
+              <button type="submit" class="btn btn-primary" id="submit-btn">
+                Sign In
+              </button>
+            </div>
+          </form>
+
+          <!-- Sign Up Link -->
+          <div class="divider">Don't have an account?</div>
+          <a href="/signup" class="btn btn-outline btn-sm">
+            Create an Account
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { login } from "../lib/api";
+    import { APIError } from "../types/api";
+
+    const form = document.getElementById("signin-form") as HTMLFormElement;
+    const emailInput = document.getElementById("email") as HTMLInputElement;
+    const passwordInput = document.getElementById(
+      "password",
+    ) as HTMLInputElement;
+    const submitBtn = document.getElementById(
+      "submit-btn",
+    ) as HTMLButtonElement;
+    const generalError = document.getElementById("general-error")!;
+    const generalErrorMessage = document.getElementById(
+      "general-error-message",
+    )!;
+    const emailError = document.getElementById("email-error")!;
+    const passwordError = document.getElementById("password-error")!;
+
+    // Clear all error messages
+    function clearErrors() {
+      generalError.classList.add("hidden");
+      emailError.classList.add("hidden");
+      passwordError.classList.add("hidden");
+    }
+
+    // Show general error message
+    function showGeneralError(message: string) {
+      generalErrorMessage.textContent = message;
+      generalError.classList.remove("hidden");
+    }
+
+    // Show field-specific error
+    function showFieldError(field: "email" | "password", message: string) {
+      const errorElement = field === "email" ? emailError : passwordError;
+      const errorSpan = errorElement.querySelector(
+        ".label-text-alt",
+      ) as HTMLSpanElement;
+      errorSpan.textContent = message;
+      errorElement.classList.remove("hidden");
+    }
+
+    // Handle form submission
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearErrors();
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      // Client-side validation
+      if (!email) {
+        showFieldError("email", "Email is required");
+        return;
+      }
+
+      if (!password) {
+        showFieldError("password", "Password is required");
+        return;
+      }
+
+      // Disable submit button during request
+      submitBtn.disabled = true;
+      submitBtn.classList.add("loading");
+
+      try {
+        await login(email, password);
+
+        // Success! Redirect to home page
+        window.location.href = "/";
+      } catch (error) {
+        if (error instanceof APIError) {
+          // Handle validation errors (422)
+          if (error.statusCode === 422 && error.errors) {
+            if (error.errors.email) {
+              showFieldError("email", error.errors.email);
+            }
+            if (error.errors.password) {
+              showFieldError("password", error.errors.password);
+            }
+            // If no field-specific errors, show general message
+            if (!error.errors.email && !error.errors.password) {
+              showGeneralError(error.message);
+            }
+          }
+          // Handle rate limiting (429)
+          else if (error.statusCode === 429) {
+            showGeneralError(
+              "Too many login attempts. Please try again later.",
+            );
+          }
+          // Handle conflict (409) - already logged in
+          else if (error.statusCode === 409) {
+            showGeneralError(error.message);
+          }
+          // Handle other API errors
+          else {
+            showGeneralError(error.message);
+          }
+        } else {
+          // Network or other errors
+          showGeneralError(
+            "Unable to connect to the server. Please try again.",
+          );
+        }
+      } finally {
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitBtn.classList.remove("loading");
+      }
+    });
+  </script>
+</BaseLayout>
