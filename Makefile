@@ -93,10 +93,12 @@ deploy/service:
 lint:
 	golangci-lint run
 
+.PHONY: fmt ## run go fmt
+fmt:
+	go fmt ./...
+
 .PHONY: test ## run all tests
 test:
-	DOCKER_HOST=unix://$(XDG_RUNTIME_DIR)/podman/podman.sock \
-	TESTCONTAINERS_RYUK_DISABLED=true \
 	go test -v ./...
 
 .PHONY: tests/integration ## run integration tests

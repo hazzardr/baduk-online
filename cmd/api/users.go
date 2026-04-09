@@ -124,6 +124,11 @@ func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 	user, err := api.db.Registration.GetUserFromToken(ctx, input.Token)
 	if err != nil {
 		if errors.Is(err, data.ErrNoUserFound) {
+			// Log failed activation attempt for security auditing
+			slog.Warn("failed activation attempt",
+				"ip", r.RemoteAddr,
+				"token_prefix", input.Token[:min(6, len(input.Token))],
+				"error", "invalid or expired token")
 			v.AddError("token", "invalid or expired access token")
 			api.failedValidationResponse(w, r, v.Errors)
 		} else {
@@ -150,6 +155,14 @@ func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Send activation confirmation email asynchronously
+	api.background(func() {
+		err := api.mailer.SendAccountActivatedEmail(context.Background(), user)
+		if err != nil {
+			slog.Error("failed to send account activated email", "user", user.Email, "err", err)
+		}
+	})
+
 	userDetails := map[string]any{
 		"name":      user.Name,
 		"email":     user.Email,
@@ -161,5 +174,61 @@ func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		api.serverErrorResponse(w, r, err)
 		return
+	}
+}
+
+// handleLogin authenticates a user with email and password, creating a session on success.
+func (api *API) handleLogin(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	err := api.readJSON(w, r, &input)
+	if err != nil {
+		api.badRequestResponse(w, r, err)
+		return
+	}
+
+	// Check if user already has an active session
+	if api.handleExistingSession(w, r, input.Email) {
+		return // Response already sent
+	}
+
+	// Authenticate user credentials
+	user := api.authenticateUser(w, r, input.Email, input.Password)
+	if user == nil {
+		return // Authentication failed, response already sent
+	}
+
+	// Create session and send success response
+	api.createSessionAndRespond(w, r, user)
+}
+
+// handleLogout destroys the user's session.
+func (api *API) handleLogout(w http.ResponseWriter, r *http.Request) {
+	// Get user email before destroying session (for logging)
+	email := api.sessionManager.GetString(r.Context(), string(userContextKey))
+
+	// Destroy session
+	err := api.sessionManager.Destroy(r.Context())
+	if err != nil {
+		api.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Log successful logout
+	if email != "" {
+		slog.Info("user logged out", "email", email, "ip", r.RemoteAddr)
+	}
+
+	// Return success response
+	response := map[string]string{
+		"message": "logged out successfully",
+	}
+
+	err = api.writeJSON(w, http.StatusOK, response, nil)
+	if err != nil {
+		api.serverErrorResponse(w, r, err)
 	}
 }
