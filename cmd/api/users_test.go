@@ -79,6 +79,17 @@ func (m *mockMailer) SendRegistrationEmail(_ context.Context, user *data.User) e
 	return nil
 }
 
+func (m *mockMailer) SendAccountActivatedEmail(_ context.Context, user *data.User) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.emailsSent = append(m.emailsSent, user)
+	return nil
+}
+
+func (m *mockMailer) Ping(_ context.Context) error {
+	return nil
+}
+
 // GetLastTokenForUser creates a new registration token for a user, used in tests to
 // simulate the token that would have been emailed.
 func (m *mockMailer) GetLastTokenForUser(ctx context.Context, userID int64) (string, error) {
@@ -113,8 +124,9 @@ func TestUserRegistrationIntegration(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
+	origins := []string{"http://localhost:3000"}
 	mailer := &mockMailer{db: db}
-	api := NewAPI("test", "1.0.0", db, mailer)
+	api := New("test", "1.0.0", db, mailer, origins)
 	server := httptest.NewServer(api.Routes())
 	defer server.Close()
 
@@ -249,8 +261,9 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
+	origins := []string{"http://localhost:3000"}
 	mailer := &mockMailer{db: db}
-	api := NewAPI("test", "1.0.0", db, mailer)
+	api := New("test", "1.0.0", db, mailer, origins)
 	server := httptest.NewServer(api.Routes())
 	defer server.Close()
 
@@ -323,8 +336,8 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 			t.Error("user should be validated after activation")
 		}
 
-		// Only one email is sent (registration); activation does not send a second email.
-		mailer.waitForEmails(t, 1, 2*time.Second)
+		// Wait for the activation confirmation email background goroutine.
+		mailer.waitForEmails(t, 2, 2*time.Second)
 
 		dbUser, err = db.Users.GetByEmail(context.Background(), "tokentest@example.com")
 		if err != nil {
