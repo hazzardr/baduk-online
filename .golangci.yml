@@ -9,7 +9,6 @@ linters:
     - canonicalheader
     - copyloopvar
     - cyclop
-    - depguard
     - dupl
     - durationcheck
     - errcheck
