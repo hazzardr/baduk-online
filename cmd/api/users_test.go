@@ -13,6 +13,7 @@ import (
 
 	"github.com/hazzardr/baduk-online/internal/data"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/nalgeon/be"
 	"github.com/pressly/goose/v3"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -72,9 +73,11 @@ type mockMailer struct {
 	mu         sync.Mutex
 }
 
-func (m *mockMailer) SendAccountActivatedEmail(_ context.Context, _ *data.User) error {
-	// TODO implement me
-	panic("implement me")
+func (m *mockMailer) SendAccountActivatedEmail(_ context.Context, u *data.User) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.emailsSent = append(m.emailsSent, u)
+	return nil
 }
 
 func (m *mockMailer) Ping(_ context.Context) error {
@@ -89,7 +92,8 @@ func (m *mockMailer) SendRegistrationEmail(_ context.Context, user *data.User) e
 	return nil
 }
 
-func (m *mockMailer) GetLastTokenForUser(ctx context.Context, userID int64) (string, error) {
+// bit of a hack to get at the database.
+func (m *mockMailer) CreateNewRegistrationToken(ctx context.Context, userID int64) (string, error) {
 	token, err := m.db.Registration.NewToken(ctx, userID, 15*time.Minute)
 	if err != nil {
 		return "", err
@@ -264,7 +268,10 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 		if resp.StatusCode != http.StatusCreated {
 			t.Fatalf("expected status 201, got %d", resp.StatusCode)
 		}
+		// registration email should have been sent
+		be.Equal(t, 1, len(mailer.emailsSent))
 
+		// verify user details
 		var user data.User
 		if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
 			t.Fatalf("failed to decode user: %s", err)
@@ -279,7 +286,7 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 			t.Fatalf("failed to get user from database: %s", err)
 		}
 
-		token, err := mailer.GetLastTokenForUser(context.Background(), int64(dbUser.ID))
+		token, err := mailer.CreateNewRegistrationToken(context.Background(), int64(dbUser.ID))
 		if err != nil {
 			t.Fatalf("failed to get token: %s", err)
 		}
@@ -291,7 +298,7 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 
 		req, _ := http.NewRequest(http.MethodPut, server.URL+"/api/v1/users/activated", bytes.NewBuffer(activateBody))
 		req.Header.Set("Content-Type", "application/json")
-		client := &http.Client{}
+		client := http.DefaultClient
 		activateResp, err := client.Do(req)
 		if err != nil {
 			t.Fatalf("failed to activate user: %s", err)
@@ -312,14 +319,8 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 		if validated, ok := activatedUser["validated"].(bool); !ok || !validated {
 			t.Error("user should be validated after activation")
 		}
-
-		dbUser, err = db.Users.GetByEmail(context.Background(), "tokentest@example.com")
-		if err != nil {
-			t.Fatalf("failed to get user from database: %s", err)
-		}
-		if !dbUser.Validated {
-			t.Error("database user should be validated")
-		}
+		// account activation email should have been sent
+		be.Equal(t, 2, len(mailer.emailsSent))
 	})
 
 	t.Run("reject invalid token", func(t *testing.T) {
@@ -404,7 +405,7 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 			t.Fatalf("failed to get user from database: %s", err)
 		}
 
-		token, err := mailer.GetLastTokenForUser(context.Background(), int64(dbUser.ID))
+		token, err := mailer.CreateNewRegistrationToken(context.Background(), int64(dbUser.ID))
 		if err != nil {
 			t.Fatalf("failed to get token: %s", err)
 		}

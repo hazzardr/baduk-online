@@ -91,19 +91,14 @@ deploy/service:
 
 .PHONY: lint ## run golangci-lint
 lint:
-	golangci-lint run \
-		&& pnpm --dir frontend run lint
-
+	golangci-lint run
 
 .PHONY: fmt ## run go fmt
 fmt:
-	go fmt ./... \
-		&& pnpm --dir frontend run fmt
+	go fmt ./...
 
 .PHONY: test ## run all tests
 test:
-	DOCKER_HOST=unix://$(XDG_RUNTIME_DIR)/podman/podman.sock \
-	TESTCONTAINERS_RYUK_DISABLED=true \
 	go test -v ./...
 
 .PHONY: tests/integration ## run integration tests

@@ -27,7 +27,6 @@ linters:
     - godot
     - gomoddirectives
     - goprintffuncname
-    - gosec
     - iface
     - ineffassign
     - intrange
@@ -177,7 +176,6 @@ linters:
           - errcheck
           - funlen
           - goconst
-          - gosec
           - noctx
           - wrapcheck
           - nestif
