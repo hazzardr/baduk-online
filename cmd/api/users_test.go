@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/hazzardr/baduk-online/internal/data"
@@ -258,28 +259,30 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 			"password": "password123",
 		}
 		body, _ := json.Marshal(payload)
+		synctest.Test(t, func(t *testing.T) {
+			resp, err := http.Post(server.URL+"/api/v1/users", "application/json", bytes.NewBuffer(body))
+			if err != nil {
+				t.Fatalf("failed to create user: %s", err)
+			}
+			defer resp.Body.Close()
 
-		resp, err := http.Post(server.URL+"/api/v1/users", "application/json", bytes.NewBuffer(body))
-		if err != nil {
-			t.Fatalf("failed to create user: %s", err)
-		}
-		defer resp.Body.Close()
+			if resp.StatusCode != http.StatusCreated {
+				t.Fatalf("expected status 201, got %d", resp.StatusCode)
+			}
 
-		if resp.StatusCode != http.StatusCreated {
-			t.Fatalf("expected status 201, got %d", resp.StatusCode)
-		}
-		// registration email should have been sent
-		be.Equal(t, 1, len(mailer.emailsSent))
+			// verify user details
+			var user data.User
+			if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+				t.Fatalf("failed to decode user: %s", err)
+			}
 
-		// verify user details
-		var user data.User
-		if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-			t.Fatalf("failed to decode user: %s", err)
-		}
-
-		if user.Validated {
-			t.Error("user should not be validated yet")
-		}
+			if user.Validated {
+				t.Error("user should not be validated yet")
+			}
+			// wait for registration email to be sent
+			synctest.Wait()
+			be.Equal(t, len(mailer.emailsSent), 1)
+		})
 
 		dbUser, err := db.Users.GetByEmail(context.Background(), "tokentest@example.com")
 		if err != nil {
@@ -295,32 +298,34 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 			"token": token,
 		}
 		activateBody, _ := json.Marshal(activatePayload)
+		synctest.Test(t, func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodPut, server.URL+"/api/v1/users/activated", bytes.NewBuffer(activateBody))
+			req.Header.Set("Content-Type", "application/json")
+			client := http.DefaultClient
+			activateResp, err := client.Do(req)
+			if err != nil {
+				t.Fatalf("failed to activate user: %s", err)
+			}
+			defer activateResp.Body.Close()
 
-		req, _ := http.NewRequest(http.MethodPut, server.URL+"/api/v1/users/activated", bytes.NewBuffer(activateBody))
-		req.Header.Set("Content-Type", "application/json")
-		client := http.DefaultClient
-		activateResp, err := client.Do(req)
-		if err != nil {
-			t.Fatalf("failed to activate user: %s", err)
-		}
-		defer activateResp.Body.Close()
+			if activateResp.StatusCode != http.StatusOK {
+				var errResp map[string]interface{}
+				json.NewDecoder(activateResp.Body).Decode(&errResp)
+				t.Fatalf("expected status 200, got %d: %+v", activateResp.StatusCode, errResp)
+			}
 
-		if activateResp.StatusCode != http.StatusOK {
-			var errResp map[string]interface{}
-			json.NewDecoder(activateResp.Body).Decode(&errResp)
-			t.Fatalf("expected status 200, got %d: %+v", activateResp.StatusCode, errResp)
-		}
+			var activatedUser map[string]interface{}
+			if err := json.NewDecoder(activateResp.Body).Decode(&activatedUser); err != nil {
+				t.Fatalf("failed to decode activated user: %s", err)
+			}
 
-		var activatedUser map[string]interface{}
-		if err := json.NewDecoder(activateResp.Body).Decode(&activatedUser); err != nil {
-			t.Fatalf("failed to decode activated user: %s", err)
-		}
-
-		if validated, ok := activatedUser["validated"].(bool); !ok || !validated {
-			t.Error("user should be validated after activation")
-		}
-		// account activation email should have been sent
-		be.Equal(t, 2, len(mailer.emailsSent))
+			if validated, ok := activatedUser["validated"].(bool); !ok || !validated {
+				t.Error("user should be validated after activation")
+			}
+			// account activation email should have been sent
+			synctest.Wait()
+			be.Equal(t, len(mailer.emailsSent), 2)
+		})
 	})
 
 	t.Run("reject invalid token", func(t *testing.T) {
