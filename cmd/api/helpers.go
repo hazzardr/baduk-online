@@ -15,21 +15,15 @@ import (
 
 // background will launch the given function on a background goRoutine with recovery handlers.
 func (api *API) background(fn func()) {
-	withRecoverPanic := func(caller func()) {
+	api.wg.Go(func() {
 		defer func() {
-			pv := recover()
-			if pv != nil {
+			if pv := recover(); pv != nil {
 				slog.Error("error executing function", "panic", fmt.Sprintf("%v", pv))
 			}
 		}()
-		caller()
-	}
-	api.wg.Go(func() {
-		withRecoverPanic(fn)
+		fn()
 	})
 }
-
-// Begin session helpers
 
 func (api *API) getUserFromContext(r *http.Request) (*data.User, error) {
 	exists := api.sessionManager.Exists(r.Context(), string(userContextKey))
@@ -113,6 +107,6 @@ func (api *API) dataConflictResponse(c *echo.Context, err error) error {
 	return api.errorResponse(c, http.StatusConflict, "unable to update the record due to an edit conflict, please try again")
 }
 
-func (api *API) csrfFailureResponse(w http.ResponseWriter, r *http.Request) {
+func (api *API) csrfFailureResponse(w http.ResponseWriter) {
 	_ = writeJSON(w, http.StatusForbidden, map[string]any{"error": "CSRF check failed"})
 }

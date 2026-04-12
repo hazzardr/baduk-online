@@ -23,7 +23,7 @@ func (api *API) csrfMiddleware(trustedOrigins []string) echo.MiddlewareFunc {
 
 		// Set custom deny handler that uses our error response pattern
 		cop.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			api.csrfFailureResponse(w, r)
+			api.csrfFailureResponse(w)
 		}))
 
 		return cop.Handler(next)

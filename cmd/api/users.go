@@ -105,7 +105,7 @@ func (api *API) handleRegisterUser(c *echo.Context) error {
 		return api.failedValidationResponse(c, v.Errors)
 	}
 
-	ctx := context.Background()
+	ctx := c.Request().Context()
 
 	user, err := api.db.Registration.GetUserFromToken(ctx, input.Token)
 	if err != nil {
