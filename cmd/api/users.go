@@ -8,37 +8,33 @@ import (
 
 	"github.com/hazzardr/baduk-online/internal/data"
 	"github.com/hazzardr/baduk-online/internal/validator"
+	"github.com/labstack/echo/v5"
 )
 
-func (api *API) handleGetLoggedInUser(w http.ResponseWriter, r *http.Request) {
-	user, err := api.getUserFromContext(r)
+func (api *API) handleGetLoggedInUser(c *echo.Context) error {
+	user, err := api.getUserFromContext(c.Request())
 	if err != nil {
 		if errors.Is(err, data.ErrNoUserFound) {
-			api.unauthenticatedResponse(w, r)
-		} else {
-			api.serverErrorResponse(w, r, errors.Join(errors.New("failed to retrieve user data from context"), err))
+			return api.unauthenticatedResponse(c)
 		}
-		return
+		return api.serverErrorResponse(c, errors.Join(errors.New("failed to retrieve user data from context"), err))
 	}
-	err = api.writeJSON(w, 200, user, nil)
-	if err != nil {
-		api.serverErrorResponse(w, r, err)
-	}
+	return c.JSON(http.StatusOK, user)
 }
 
 // handleCreateUser will create a user in the database and attempt to send a registration email asynchronously.
-func (api *API) handleCreateUser(w http.ResponseWriter, r *http.Request) {
+func (api *API) handleCreateUser(c *echo.Context) error {
 	var input struct {
 		Name     string `json:"name"`
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
 
-	err := api.readJSON(w, r, &input)
+	err := readJSON(c.Request(), &input)
 	if err != nil {
-		api.badRequestResponse(w, r, err)
-		return
+		return api.badRequestResponse(c, err)
 	}
+
 	user := &data.User{
 		Name:      input.Name,
 		Email:     input.Email,
@@ -47,30 +43,22 @@ func (api *API) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 
 	err = user.Password.Set(input.Password)
 	if err != nil {
-		api.serverErrorResponse(w, r, err)
-		return
+		return api.serverErrorResponse(c, err)
 	}
 
 	v := validator.New()
 	if data.ValidateUser(v, user); !v.Valid() {
-		api.failedValidationResponse(w, r, v.Errors)
-		return
+		return api.failedValidationResponse(c, v.Errors)
 	}
 
-	err = api.db.Users.Insert(r.Context(), user)
+	err = api.db.Users.Insert(c.Request().Context(), user)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrDuplicateEmail):
-			api.errorResponse(w, r, http.StatusConflict, "a user with this email address already exists")
+			return api.errorResponse(c, http.StatusConflict, "a user with this email address already exists")
 		default:
-			api.serverErrorResponse(w, r, err)
+			return api.serverErrorResponse(c, err)
 		}
-		return
-	}
-	err = api.writeJSON(w, http.StatusCreated, user, nil)
-	if err != nil {
-		api.serverErrorResponse(w, r, err)
-		return
 	}
 
 	api.background(func() {
@@ -79,44 +67,42 @@ func (api *API) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 			slog.Error("failed to send registration email", "user", user.Email, "err", err)
 		}
 	})
+
+	return c.JSON(http.StatusCreated, user)
 }
 
 // handleSendRegistrationEmail sends a registration email based on the email address in the payload.
-func (api *API) handleSendRegistrationEmail(w http.ResponseWriter, r *http.Request) {
-	user, err := api.getUserFromContext(r)
+func (api *API) handleSendRegistrationEmail(c *echo.Context) error {
+	user, err := api.getUserFromContext(c.Request())
 	if err != nil {
 		if errors.Is(err, data.ErrNoUserFound) {
-			api.unauthenticatedResponse(w, r)
-		} else {
-			api.serverErrorResponse(w, r, errors.Join(errors.New("failed to retrieve user data from context"), err))
+			return api.unauthenticatedResponse(c)
 		}
-		return
+		return api.serverErrorResponse(c, errors.Join(errors.New("failed to retrieve user data from context"), err))
 	}
-	err = api.mailer.SendRegistrationEmail(r.Context(), user)
+	err = api.mailer.SendRegistrationEmail(c.Request().Context(), user)
 	if err != nil {
 		slog.Error("failed to send registration email", "user", user.Email, "err", err)
-		api.serverErrorResponse(w, r, err)
-		return
+		return api.serverErrorResponse(c, err)
 	}
+	return nil
 }
 
 // handleRegisterUser takes an activation token and determines if there are any users
 // associated with it. If so, the user is now activated.
-func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
+func (api *API) handleRegisterUser(c *echo.Context) error {
 	var input struct {
 		Token string `json:"token"`
 	}
-	err := api.readJSON(w, r, &input)
+	err := readJSON(c.Request(), &input)
 	if err != nil {
-		api.badRequestResponse(w, r, err)
-		return
+		return api.badRequestResponse(c, err)
 	}
 
 	v := validator.New()
 	data.ValidateRegistrationToken(v, input.Token)
 	if !v.Valid() {
-		api.failedValidationResponse(w, r, v.Errors)
-		return
+		return api.failedValidationResponse(c, v.Errors)
 	}
 
 	ctx := context.Background()
@@ -126,15 +112,13 @@ func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, data.ErrNoUserFound) {
 			// Log failed activation attempt for security auditing
 			slog.Warn("failed activation attempt",
-				"ip", r.RemoteAddr,
+				"ip", c.Request().RemoteAddr,
 				"token_prefix", input.Token[:min(6, len(input.Token))],
 				"error", "invalid or expired token")
 			v.AddError("token", "invalid or expired access token")
-			api.failedValidationResponse(w, r, v.Errors)
-		} else {
-			api.serverErrorResponse(w, r, err)
+			return api.failedValidationResponse(c, v.Errors)
 		}
-		return
+		return api.serverErrorResponse(c, err)
 	}
 
 	user.Validated = true
@@ -142,17 +126,14 @@ func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 	err = api.db.Users.Update(ctx, user)
 	if err != nil {
 		if errors.Is(err, data.ErrEditConflict) {
-			api.dataConflictResponse(w, r, err)
-		} else {
-			api.serverErrorResponse(w, r, err)
+			return api.dataConflictResponse(c, err)
 		}
-		return
+		return api.serverErrorResponse(c, err)
 	}
 
 	err = api.db.Registration.RevokeTokensForUser(ctx, int64(user.ID))
 	if err != nil {
-		api.serverErrorResponse(w, r, err)
-		return
+		return api.serverErrorResponse(c, err)
 	}
 
 	// Send activation confirmation email asynchronously
@@ -170,65 +151,51 @@ func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 		"validated": user.Validated,
 	}
 
-	err = api.writeJSON(w, http.StatusOK, userDetails, nil)
-	if err != nil {
-		api.serverErrorResponse(w, r, err)
-		return
-	}
+	return c.JSON(http.StatusOK, userDetails)
 }
 
 // handleLogin authenticates a user with email and password, creating a session on success.
-func (api *API) handleLogin(w http.ResponseWriter, r *http.Request) {
+func (api *API) handleLogin(c *echo.Context) error {
 	var input struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
 
-	err := api.readJSON(w, r, &input)
+	err := readJSON(c.Request(), &input)
 	if err != nil {
-		api.badRequestResponse(w, r, err)
-		return
+		return api.badRequestResponse(c, err)
 	}
 
 	// Check if user already has an active session
-	if api.handleExistingSession(w, r, input.Email) {
-		return // Response already sent
+	if handled, resp := api.handleExistingSession(c, input.Email); handled {
+		return resp
 	}
 
 	// Authenticate user credentials
-	user := api.authenticateUser(w, r, input.Email, input.Password)
+	user, resp := api.authenticateUser(c, input.Email, input.Password)
 	if user == nil {
-		return // Authentication failed, response already sent
+		return resp
 	}
 
 	// Create session and send success response
-	api.createSessionAndRespond(w, r, user)
+	return api.createSessionAndRespond(c, user)
 }
 
 // handleLogout destroys the user's session.
-func (api *API) handleLogout(w http.ResponseWriter, r *http.Request) {
+func (api *API) handleLogout(c *echo.Context) error {
 	// Get user email before destroying session (for logging)
-	email := api.sessionManager.GetString(r.Context(), string(userContextKey))
+	email := api.sessionManager.GetString(c.Request().Context(), string(userContextKey))
 
 	// Destroy session
-	err := api.sessionManager.Destroy(r.Context())
+	err := api.sessionManager.Destroy(c.Request().Context())
 	if err != nil {
-		api.serverErrorResponse(w, r, err)
-		return
+		return api.serverErrorResponse(c, err)
 	}
 
 	// Log successful logout
 	if email != "" {
-		slog.Info("user logged out", "email", email, "ip", r.RemoteAddr)
+		slog.Info("user logged out", "email", email, "ip", c.Request().RemoteAddr)
 	}
 
-	// Return success response
-	response := map[string]string{
-		"message": "logged out successfully",
-	}
-
-	err = api.writeJSON(w, http.StatusOK, response, nil)
-	if err != nil {
-		api.serverErrorResponse(w, r, err)
-	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "logged out successfully"})
 }

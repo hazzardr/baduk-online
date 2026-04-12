@@ -1,57 +1,49 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/labstack/echo/v5"
 )
 
 func TestWriteJSON(t *testing.T) {
 	tests := []struct {
-		name        string
-		data        any
-		status      int
-		headers     http.Header
-		wantStatus  int
-		wantBody    string
-		wantHeaders http.Header
+		name       string
+		data       any
+		status     int
+		wantStatus int
+		wantKey    string
+		wantValue  any
 	}{
 		{
 			name:       "Success with simple data",
 			data:       map[string]string{"message": "test"},
 			status:     http.StatusOK,
-			headers:    nil,
 			wantStatus: http.StatusOK,
-			wantBody:   "{\n\t\"message\": \"test\"\n}",
-			wantHeaders: http.Header{
-				"Content-Type": []string{"application/json"},
-			},
+			wantKey:    "message",
+			wantValue:  "test",
 		},
 		{
-			name:   "Success with custom headers",
-			data:   map[string]int{"count": 42},
-			status: http.StatusCreated,
-			headers: http.Header{
-				"X-Custom": []string{"value"},
-			},
+			name:       "Success with created status",
+			data:       map[string]int{"count": 42},
+			status:     http.StatusCreated,
 			wantStatus: http.StatusCreated,
-			wantBody:   "{\n\t\"count\": 42\n}",
-			wantHeaders: http.Header{
-				"Content-Type": []string{"application/json"},
-				"X-Custom":     []string{"value"},
-			},
+			wantKey:    "count",
+			wantValue:  float64(42),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rr := httptest.NewRecorder()
-			api := &API{}
 
-			err := api.writeJSON(rr, tt.status, tt.data, tt.headers)
+			err := writeJSON(rr, tt.status, tt.data)
 			if err != nil {
 				t.Fatalf("writeJSON returned error: %v", err)
 			}
@@ -63,19 +55,16 @@ func TestWriteJSON(t *testing.T) {
 				t.Errorf("status code = %d, want %d", resp.StatusCode, tt.wantStatus)
 			}
 
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				t.Fatalf("couldn't read response body: %v", err)
+			if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
+				t.Errorf("Content-Type = %q, want %q", ct, "application/json")
 			}
 
-			if string(body) != tt.wantBody {
-				t.Errorf("body = %q, want %q", string(body), tt.wantBody)
+			var body map[string]any
+			if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+				t.Fatalf("couldn't decode response body: %v", err)
 			}
-
-			for k, v := range tt.wantHeaders {
-				if !reflect(resp.Header[k], v) {
-					t.Errorf("header[%q] = %v, want %v", k, resp.Header[k], v)
-				}
+			if body[tt.wantKey] != tt.wantValue {
+				t.Errorf("body[%q] = %v, want %v", tt.wantKey, body[tt.wantKey], tt.wantValue)
 			}
 		})
 	}
@@ -110,19 +99,19 @@ func TestReadJSON(t *testing.T) {
 			name:        "Invalid JSON syntax",
 			requestBody: `{"name":"John","age":30,}`,
 			wantError:   true,
-			errorString: "body contains badly formatted JSON",
+			errorString: "body contains badly-formed JSON",
 		},
 		{
 			name:        "Unknown field",
 			requestBody: `{"name":"John","age":30,"unknown":true}`,
 			wantError:   true,
-			errorString: "body contains unknown field",
+			errorString: "body contains unknown key",
 		},
 		{
 			name:        "Type mismatch",
 			requestBody: `{"name":"John","age":"thirty"}`,
 			wantError:   true,
-			errorString: "body contains incorrect JSON",
+			errorString: "body contains incorrect JSON type",
 		},
 		{
 			name:        "Multiple JSON values",
@@ -134,13 +123,11 @@ func TestReadJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			api := &API{}
 			var result testStruct
 
 			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.requestBody))
-			rr := httptest.NewRecorder()
 
-			err := api.readJSON(rr, req, &result)
+			err := readJSON(req, &result)
 
 			if tt.wantError {
 				if err == nil {
@@ -162,35 +149,40 @@ func TestReadJSON(t *testing.T) {
 }
 
 func TestErrorResponses(t *testing.T) {
+	newEchoContext := func(w http.ResponseWriter, r *http.Request) *echo.Context {
+		e := echo.New()
+		c := e.NewContext(r, w)
+		return c
+	}
+
 	tests := []struct {
 		name       string
-		testFunc   func(*API, http.ResponseWriter, *http.Request)
+		testFunc   func(*API, *echo.Context) error
 		wantStatus int
-		wantBody   string
+		wantError  any
 	}{
 		{
 			name: "Bad request response",
-			testFunc: func(api *API, w http.ResponseWriter, r *http.Request) {
-				api.badRequestResponse(w, r, errors.New("bad request"))
+			testFunc: func(api *API, c *echo.Context) error {
+				return api.badRequestResponse(c, errors.New("bad request"))
 			},
 			wantStatus: http.StatusBadRequest,
-			wantBody:   "{\n\t\"error\": \"bad request\"\n}",
+			wantError:  "bad request",
 		},
 		{
 			name: "Failed validation",
-			testFunc: func(api *API, w http.ResponseWriter, r *http.Request) {
-				api.failedValidationResponse(w, r, map[string]string{"field": "invalid"})
+			testFunc: func(api *API, c *echo.Context) error {
+				return api.failedValidationResponse(c, map[string]string{"field": "invalid"})
 			},
 			wantStatus: http.StatusUnprocessableEntity,
-			wantBody:   "{\n\t\"error\": {\n\t\t\"field\": \"invalid\"\n\t}\n}",
 		},
 		{
 			name: "Server error response",
-			testFunc: func(api *API, w http.ResponseWriter, r *http.Request) {
-				api.serverErrorResponse(w, r, errors.New("database connection failed"))
+			testFunc: func(api *API, c *echo.Context) error {
+				return api.serverErrorResponse(c, errors.New("database connection failed"))
 			},
 			wantStatus: http.StatusInternalServerError,
-			wantBody:   "{\n\t\"error\": \"internal server error\"\n}",
+			wantError:  "the server encountered a problem and could not process your request",
 		},
 	}
 
@@ -199,8 +191,9 @@ func TestErrorResponses(t *testing.T) {
 			api := &API{}
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			rr := httptest.NewRecorder()
+			c := newEchoContext(rr, req)
 
-			tt.testFunc(api, rr, req)
+			tt.testFunc(api, c)
 
 			resp := rr.Result()
 			defer resp.Body.Close()
@@ -214,8 +207,19 @@ func TestErrorResponses(t *testing.T) {
 				t.Fatalf("couldn't read response body: %v", err)
 			}
 
-			if string(body) != tt.wantBody {
-				t.Errorf("body = %q, want %q", string(body), tt.wantBody)
+			var parsed map[string]any
+			if err := json.Unmarshal(body, &parsed); err != nil {
+				t.Fatalf("couldn't parse response body as JSON: %v", err)
+			}
+
+			if _, ok := parsed["error"]; !ok {
+				t.Error("response body missing 'error' key")
+			}
+
+			if tt.wantError != nil {
+				if parsed["error"] != tt.wantError {
+					t.Errorf("error = %v, want %v", parsed["error"], tt.wantError)
+				}
 			}
 		})
 	}

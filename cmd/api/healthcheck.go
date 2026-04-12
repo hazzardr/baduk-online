@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/labstack/echo/v5"
 )
 
 const CoalesceInterval = 5 * time.Second
@@ -63,8 +65,8 @@ func (api *API) checkHealth(ctx context.Context) map[string]string {
 	return statuses
 }
 
-func (api *API) handleHealthCheck(w http.ResponseWriter, _ *http.Request) {
-	ctx := context.Background()
+func (api *API) handleHealthCheck(c *echo.Context) error {
+	ctx := c.Request().Context()
 	statuses := api.checkHealth(ctx)
 
 	hc := map[string]any{
@@ -72,9 +74,5 @@ func (api *API) handleHealthCheck(w http.ResponseWriter, _ *http.Request) {
 		"env":     api.environment,
 		"version": api.version,
 	}
-	err := api.writeJSON(w, http.StatusOK, hc, nil)
-	if err != nil {
-		slog.Error("failed to marshal health check response", slog.Any("error", err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
+	return c.JSON(http.StatusOK, hc)
 }

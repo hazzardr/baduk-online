@@ -3,12 +3,14 @@ package api
 import (
 	"log/slog"
 	"net/http"
+
+	"github.com/labstack/echo/v5"
 )
 
 // csrfMiddleware returns a middleware that provides CSRF protection using Go's built-in
 // cross-origin protection with configurable trusted origins.
-func (api *API) csrfMiddleware(trustedOrigins []string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
+func (api *API) csrfMiddleware(trustedOrigins []string) echo.MiddlewareFunc {
+	return echo.WrapMiddleware(func(next http.Handler) http.Handler {
 		cop := http.NewCrossOriginProtection()
 
 		// Add each trusted origin to the protection
@@ -25,5 +27,5 @@ func (api *API) csrfMiddleware(trustedOrigins []string) func(http.Handler) http.
 		}))
 
 		return cop.Handler(next)
-	}
+	})
 }

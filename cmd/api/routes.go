@@ -4,41 +4,44 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 )
 
 func (api *API) Routes() http.Handler {
-	r := chi.NewRouter()
-
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(api.sessionManager.LoadAndSave)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(10 * time.Second))
+	e := echo.New()
+	e.Use(middleware.RequestID())
+	e.Use(echo.WrapMiddleware(api.sessionManager.LoadAndSave))
+	e.Use(middleware.RequestLogger())
+	e.Use(middleware.Recover())
+	e.Use(middleware.ContextTimeout(10 * time.Second))
 
 	// Create rate limiters
-	activationRateLimiter := newRateLimiter(5, time.Hour)
-	userCreationRateLimiter := newRateLimiter(10, time.Hour)
-	loginRateLimiter := newRateLimiter(10, time.Hour)
+	activationRateLimiter := middleware.RateLimiter(
+		middleware.NewRateLimiterMemoryStore(1),
+	)
+	userCreationRateLimiter := middleware.RateLimiter(
+		middleware.NewRateLimiterMemoryStore(1),
+	)
+	loginRateLimiter := middleware.RateLimiter(
+		middleware.NewRateLimiterMemoryStore(5),
+	)
 
 	// API routes
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Use(api.csrfMiddleware(api.trustedOrigins))
+	v1 := e.Group("/api/v1")
+	v1.Use(api.csrfMiddleware(api.trustedOrigins))
 
-		r.Get("/health", api.handleHealthCheck)
+	v1.GET("/health", api.handleHealthCheck)
 
-		// Public endpoints
-		r.With(api.rateLimitMiddleware(userCreationRateLimiter)).Post("/users", api.handleCreateUser)
-		r.Post("/users/register", api.handleSendRegistrationEmail)
-		r.With(api.rateLimitMiddleware(activationRateLimiter)).Put("/users/activated", api.handleRegisterUser)
+	v1.POST("/users", api.handleCreateUser, userCreationRateLimiter)
+	v1.POST("/users/register", api.handleSendRegistrationEmail)
+	v1.PUT("/users/activated", api.handleRegisterUser, activationRateLimiter)
 
-		// Login/Logout
-		r.With(api.rateLimitMiddleware(loginRateLimiter)).Post("/login", api.handleLogin)
-		r.Post("/logout", api.handleLogout)
+	// Login/Logout
+	v1.POST("/login", api.handleLogin, loginRateLimiter)
+	v1.POST("/logout", api.handleLogout)
 
-		r.Get("/user", api.handleGetLoggedInUser)
-	})
-	return r
+	v1.GET("/user", api.handleGetLoggedInUser)
+
+	return e
 }
