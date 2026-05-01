@@ -9,7 +9,7 @@ A full-stack web application for baduk (Go/Weiqi) online play. Built with Go RES
 ### Tech Stack
 
 **Backend:**
-- Go 1.25 with chi HTTP router
+- Go 1.26 with chi HTTP router
 - PostgreSQL with pgx driver
 - AWS SES for transactional emails
 - Session management with alexedwards/scs
@@ -25,7 +25,7 @@ A full-stack web application for baduk (Go/Weiqi) online play. Built with Go RES
 
 ### Prerequisites
 
-- Go 1.25+
+- Go 1.26.2+
 - PostgreSQL 17.5+
 - pnpm 9.15.4+
 - Podman (for local testing)

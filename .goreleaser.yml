@@ -18,9 +18,10 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
+      - darwin
 
 archives:
-  - formats: [ 'tar.gz' ]
+  - formats: ["tar.gz"]
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
       {{ .ProjectName }}_
@@ -32,7 +33,7 @@ archives:
     # use zip for windows archives
     format_overrides:
       - goos: windows
-        formats: [ 'zip' ]
+        formats: ["zip"]
 
 changelog:
   sort: asc
