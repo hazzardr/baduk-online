@@ -1,8 +1,9 @@
 [Unit]
 Description=Baduk Game Server
-After=postgres.service network-online.target
+# Postgres is a rootless user service, which a system unit cannot depend on.
+# If it is not up yet, the server exits and Restart= retries until it is.
+After=network-online.target
 Wants=network-online.target
-Requires=postgres.service
 
 [Service]
 Type=simple

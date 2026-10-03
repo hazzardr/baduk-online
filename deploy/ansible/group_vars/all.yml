@@ -10,7 +10,9 @@ baduk_base_url: https://play.baduk.online
 postgres_user: baduk
 postgres_password: "{{ vault_postgres_pass }}"
 postgres_db: baduk
-postgres_connection_string: "postgres://{{ postgres_user }}:{{ postgres_password }}@postgres:5432/{{ postgres_db }}?sslmode=disable"
+# Postgres runs in a rootless container that publishes 5432 on loopback only;
+# the backend runs on the host, so it connects via 127.0.0.1.
+postgres_connection_string: "postgres://{{ postgres_user }}:{{ postgres_password }}@127.0.0.1:5432/{{ postgres_db }}?sslmode=disable"
 
 # GitHub Container Registry (for pulling private images)
 # vault_ghcr_username: GitHub username
@@ -21,3 +23,11 @@ aws_region: "{{ vault_aws_region }}"
 aws_access_key_id: "{{ vault_aws_access_key }}"
 aws_secret_access_key: "{{ vault_aws_secret }}"
 
+# Cloudflare Tunnel
+# Hostnames routed through the tunnel to the backend. Each needs a DNS route:
+#   cloudflared tunnel route dns baduk <hostname>
+cloudflared_hostnames:
+  - play.baduk.online
+# vault_cloudflared_credentials is the contents of the <tunnel-id>.json file
+# written by `cloudflared tunnel create` (a JSON string or a YAML mapping).
+cloudflared_credentials: "{{ vault_cloudflared_credentials if vault_cloudflared_credentials is mapping else (vault_cloudflared_credentials | from_json) }}"
