@@ -60,7 +60,7 @@ deploy/bootstrap:
 		-i deploy/ansible/inventory \
 		--vault-password-file deploy/ansible/.vault_pass
 		
-.PHONY: deploy/all ## deploy all components (fedora, proxy, db, service)
+.PHONY: deploy/all ## deploy all components (fedora, db, tunnel, service)
 deploy/all:
 	uv run --with=ansible-core,passlib ansible-playbook deploy/ansible/playbook.yml \
 		-i deploy/ansible/inventory \
@@ -73,12 +73,12 @@ deploy/fedora:
 		--vault-password-file deploy/ansible/.vault_pass \
 		--tags fedora
 
-.PHONY: deploy/proxy ## deploy proxy role only
-deploy/proxy:
+.PHONY: deploy/tunnel ## deploy Cloudflare Tunnel role only
+deploy/tunnel:
 	uv run --with=ansible-core,passlib ansible-playbook deploy/ansible/playbook.yml \
 		-i deploy/ansible/inventory \
 		--vault-password-file deploy/ansible/.vault_pass \
-		--tags proxy
+		--tags tunnel
 
 .PHONY: deploy/db ## deploy database role only
 deploy/db:
