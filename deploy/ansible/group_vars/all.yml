@@ -6,11 +6,6 @@ baduk_port: 4000
 # Public URL of the frontend; used for links in emails (BASE_URL)
 baduk_base_url: https://play.baduk.online
 
-# Frontend (static Astro build, served by Caddy)
-frontend_dist_dir: "{{ playbook_dir }}/../../frontend/dist"
-caddy_www_host_dir: /home/baduk/caddy_www
-caddy_www_container_dir: /srv/www
-
 # Database
 postgres_user: baduk
 postgres_password: "{{ vault_postgres_pass }}"

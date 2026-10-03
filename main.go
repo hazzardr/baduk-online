@@ -80,8 +80,17 @@ func main() {
 	db := configureDB(cfg)
 	mailer := configureMailer(ctx, db, cfg.baseURL)
 
+	frontend := frontendFS()
+	if frontend == nil {
+		if cfg.env == "production" {
+			slog.Error("production binary built without the frontend; rebuild with -tags embedfrontend")
+			os.Exit(1)
+		}
+		slog.Warn("built without -tags embedfrontend; serving the API only")
+	}
+
 	trustedOrigins := parseTrustedOrigins(cfg.trustedOrigins)
-	apiInstance := api.New(cfg.env, version, db, mailer, trustedOrigins)
+	apiInstance := api.New(cfg.env, version, db, mailer, trustedOrigins, frontend)
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
 		Handler:      apiInstance.Routes(),

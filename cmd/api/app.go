@@ -1,6 +1,7 @@
 package api
 
 import (
+	"io/fs"
 	"net/http"
 	"sync"
 	"time"
@@ -18,6 +19,7 @@ type API struct {
 	mailer         mail.Mailer
 	sessionManager *scs.SessionManager
 	trustedOrigins []string
+	frontend       fs.FS
 	wg             sync.WaitGroup
 
 	// Health check caching
@@ -26,7 +28,14 @@ type API struct {
 	healthCachedAt time.Time
 }
 
-func New(environment, version string, db *data.Database, mailer mail.Mailer, trustedOrigins []string) *API {
+// New creates the API. frontend is the static site to serve outside /api, or nil to serve only the API.
+func New(
+	environment, version string,
+	db *data.Database,
+	mailer mail.Mailer,
+	trustedOrigins []string,
+	frontend fs.FS,
+) *API {
 	sm := scs.New()
 	sm.Lifetime = 24 * time.Hour
 	sm.Cookie.Name = "session_id"
@@ -41,6 +50,7 @@ func New(environment, version string, db *data.Database, mailer mail.Mailer, tru
 		mailer:         mailer,
 		sessionManager: sm,
 		trustedOrigins: trustedOrigins,
+		frontend:       frontend,
 	}
 }
 

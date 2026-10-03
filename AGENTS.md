@@ -30,7 +30,7 @@ Full-stack baduk (Go) app. Go 1.26 backend with chi + pgx + embedded Goose migra
 - **Package manager**: pnpm.
 - **Dev server**: `cd frontend && pnpm dev` (port 5173). Proxies `/api` to `localhost:4000` via `astro.config.ts`.
 - **Frontend tests**: a Vitest scaffold at `frontend/test/basic.test.ts`. No application tests yet. `pnpm test` runs `vitest`.
-- **Build**: `pnpm build` outputs to `frontend/dist/`.
+- **Build**: `pnpm build` outputs to `frontend/dist/`, which is embedded in the Go binary when built with `-tags embedfrontend` (`make build`, GoReleaser). Without the tag (`go run .`, `go test ./...`) the server serves only the API; `frontend_stub.go` vs `frontend_embed.go`.
 
 ## Testing
 
@@ -62,5 +62,5 @@ GitHub issues, task lists, labels, and milestones are the source of truth. See [
 
 - Backend logging uses `slog` (often via `charmbracelet/log` adapter).
 - JSON helpers (`writeJSON`, `readJSON`) are in `cmd/api/helpers.go`; prefer them over raw `json.NewEncoder`.
-- The frontend is a **static** build (no SSR adapter), served from the same origin as the API. Never rely on `Astro.locals` or `Astro.request` for auth: resolve it in the browser with `getCurrentUser()` from `src/lib/api.ts`. `Header.astro` toggles `[data-auth-guest]` / `[data-auth-user]` elements. Set user-controlled text with `textContent`, not `innerHTML`.
+- The frontend is a **static** build (no SSR adapter), served by the Go backend (`cmd/api/frontend.go`) from the same origin as the API. Never rely on `Astro.locals` or `Astro.request` for auth: resolve it in the browser with `getCurrentUser()` from `src/lib/api.ts`. `Header.astro` toggles `[data-auth-guest]` / `[data-auth-user]` elements. Set user-controlled text with `textContent`, not `innerHTML`.
 - CSRF: the backend uses Go's `http.CrossOriginProtection` (Sec-Fetch-Site/Origin checks against `TRUSTED_ORIGINS`), so same-origin browser requests pass without a token.

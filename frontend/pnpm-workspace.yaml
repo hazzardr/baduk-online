@@ -1,0 +1,5 @@
+# Dependencies allowed to run install scripts (pnpm blocks them by default).
+# esbuild fetches its platform binary; sharp is Astro's image optimizer.
+allowBuilds:
+  esbuild: true
+  sharp: true

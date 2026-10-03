@@ -80,7 +80,7 @@ The frontend will be available at `http://localhost:5173` and proxies API reques
 **Backend:**
 
 ```bash
-make build              # Build binary
+make build              # Build the frontend and a binary with it embedded (bin/)
 make test               # Run all tests
 make tests/setup        # Setup test environment (podman socket)
 make update            # Update dependencies
@@ -246,7 +246,9 @@ Each variable can also be set with the matching flag (`-port`, `-env`, `-logFmt`
 - Production must have working SES credentials; check the health endpoint after deploy.
 
 **Frontend:**
-- The frontend is a static Astro build. The browser always calls the API at the relative path `/api/v1`, so the frontend and API must share an origin: Caddy serves `frontend/dist` and routes `/api/*` to the backend in production, and the Vite dev proxy does the same locally.
+- The frontend is a static Astro build. The browser always calls the API at the relative path `/api/v1`, so the frontend and API share an origin:
+  - **Production:** the build is embedded in the Go binary (`-tags embedfrontend`; `make build` and GoReleaser do this) and served by the backend for every path outside `/api`.
+  - **Local dev:** `pnpm dev` serves the frontend and proxies `/api` to `go run .`. A plain `go build`/`go run` serves only the API.
 - `API_URL` - Where the dev proxy (`pnpm dev`) sends `/api` requests (default: `http://localhost:4000`)
 - `SITE_URL` - Canonical site URL used by Astro at build time (default: `https://play.baduk.online`)
 
