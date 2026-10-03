@@ -3,6 +3,8 @@ ansible_python_interpreter: /usr/bin/python3
 
 # Backend
 baduk_port: 4000
+# Public URL of the frontend; used for links in emails (BASE_URL)
+baduk_base_url: https://play.baduk.online
 
 # Database
 postgres_user: baduk

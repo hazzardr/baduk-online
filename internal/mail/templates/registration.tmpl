@@ -50,16 +50,16 @@
         <h2>Hello {{.Name}},</h2>
         <p>Thank you for registering with us!</p>
         
-        <p>Your account has been successfully created with the email address: <strong>{{.Email}}</strong></p>
+        <p>Your account has been created with the email address: <strong>{{.Email}}</strong></p>
         
-        <p>You can now start playing Go, tracking your games, and connecting with other players in our community.</p>
+        <p>Activate your account to start playing.</p>
         
-        <a href="{{.LoginURL}}" class="button">Start Playing</a>
+        <a href="{{.ActivationURL}}" class="button">Activate Account</a>
         
         <p>Welcome aboard!</p>
     </div>
     <div class="footer">
-        <p>You may also register your email address by navigating to https://verify.baduk.online and entering the following code manually: {{.Token}}</p>
+        <p>If the button doesn't work, copy this link into your browser: {{.ActivationURL}}</p>
         <p>This email was sent to {{.Email}}. If you didn't create an account, please ignore this email.</p>
     </div>
 </body>

@@ -6,6 +6,16 @@ A full-stack web application for baduk (Go/Weiqi) online play. Built with Go RES
 
 **baduk.online** provides user registration, authentication, and online baduk gameplay.
 
+### MVP Scope
+
+The current milestone is the baduk.online game itself ([MVP epic #20](https://github.com/hazzardr/baduk-online/issues/20), [milestone #4](https://github.com/hazzardr/baduk-online/milestone/4)). A "playable game" means: register, log in, create or join a room, place stones with legal turn rules, resign or finish, and reconnect to an active game.
+
+Non-goals for MVP: online-go.com / OIDC login, physical-board registration, puzzles (tsumego), matchmaking, ratings, password reset, chat.
+
+### Planning
+
+GitHub issues, task lists, labels, and milestones are the source of truth for tracking work. See [milestone #4 — MVP: Play a complete game](https://github.com/hazzardr/baduk-online/milestone/4).
+
 ### Tech Stack
 
 **Backend:**
@@ -29,7 +39,7 @@ A full-stack web application for baduk (Go/Weiqi) online play. Built with Go RES
 - PostgreSQL 17.5+
 - pnpm 9.15.4+
 - Podman (for local testing)
-- AWS credentials (for email in production)
+- AWS credentials for SES (optional locally — without them the server starts with email disabled, and registration returns 503)
 
 ### Quick Start
 
@@ -70,7 +80,7 @@ The frontend will be available at `http://localhost:5173` and proxies API reques
 **Backend:**
 
 ```bash
-make build              # Build binary
+make build              # Build the frontend and a binary with it embedded (bin/)
 make test               # Run all tests
 make tests/setup        # Setup test environment (podman socket)
 make update            # Update dependencies
@@ -83,11 +93,9 @@ rm -rf bin/ dist/      # Clean build artifacts
 cd frontend/
 pnpm build             # Build production bundle
 pnpm preview           # Preview production build
-pnpm test              # Run full test suite (lint, type-check, vitest, build)
-pnpm vitest:watch      # Run unit tests in watch mode
-pnpm typecheck         # Type checking only
-pnpm astro check       # Lint with Astro
-pnpm prettier:write    # Format code
+pnpm test              # Run vitest
+pnpm lint              # Run eslint
+pnpm fmt               # Format code with Prettier
 ```
 
 **Database:**
@@ -118,7 +126,6 @@ frontend/              # Astro.js frontend
     styles/            # Global styles
     assets/            # Static assets
 deploy/                # Ansible & Terraform configs
-tests/smoke/           # k6 load testing
 ```
 
 ### Backend Architecture
@@ -210,7 +217,7 @@ All endpoints are under `/api/v1`:
 ### User Activation
 
 - **Token**: Cryptographically secure random token
-- **TTL**: 15 minutes
+- **TTL**: 30 minutes
 - **Delivery**: Via AWS SES email
 - **Validation**: User marked as validated on successful activation
 
@@ -221,14 +228,29 @@ All endpoints are under `/api/v1`:
 
 **Optional (with defaults):**
 - `PORT` - API server port (default: 4000)
-- `ENV` - Environment name: `development`, `production` (default: development)
+- `ENV` - Environment name: `development`, `production` (default: development). `production` marks session cookies `Secure`.
 - `LOG_FMT` - Log format: `text`, `json` (default: text)
+- `BASE_URL` - Public URL of the frontend, used for links in emails (default: `https://play.baduk.online`). Must be an absolute `http(s)` URL or the server exits.
+- `TRUSTED_ORIGINS` - Comma-separated origins trusted for CSRF protection (default: `https://play.baduk.online` plus localhost dev ports)
 
-**AWS Credentials** (for email in production):
+Each variable can also be set with the matching flag (`-port`, `-env`, `-logFmt`, `-base-url`, `-trusted-origins`, `-dsn`); a flag overrides the environment.
+
+**AWS Credentials** (for email):
 - Configure via standard AWS SDK methods:
-  - Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+  - Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
   - Credentials file: `~/.aws/credentials`
   - IAM role (on EC2/Lambda)
+- At startup the server loads AWS config and pings SES. If either fails, it logs a warning and starts with **email disabled**:
+  - `POST /api/v1/users` and `POST /api/v1/users/register` return `503 Service Unavailable` (no account can be created or activated)
+  - `GET /api/v1/health` reports `"ses": "unavailable"`
+- Production must have working SES credentials; check the health endpoint after deploy.
+
+**Frontend:**
+- The frontend is a static Astro build. The browser always calls the API at the relative path `/api/v1`, so the frontend and API share an origin:
+  - **Production:** the build is embedded in the Go binary (`-tags embedfrontend`; `make build` and GoReleaser do this) and served by the backend for every path outside `/api`.
+  - **Local dev:** `pnpm dev` serves the frontend and proxies `/api` to `go run .`. A plain `go build`/`go run` serves only the API.
+- `API_URL` - Where the dev proxy (`pnpm dev`) sends `/api` requests (default: `http://localhost:4000`)
+- `SITE_URL` - Canonical site URL used by Astro at build time (default: `https://play.baduk.online`)
 
 ## Testing
 
@@ -247,15 +269,9 @@ Tests are located in `cmd/api/*_test.go` and cover:
 - Session management
 - Email sending
 
-### Frontend Unit Tests
+### Frontend Tests
 
-```bash
-cd frontend/
-pnpm vitest       # Run once
-pnpm vitest:watch # Watch mode
-```
-
-Tests use Vitest and are co-located with source files as `*.test.ts`.
+A Vitest scaffold exists at `frontend/test/basic.test.ts`. No application tests are written yet.
 
 ## Database
 
@@ -328,24 +344,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 1. Push commits to `main` with conventional messages
 2. release-please analyzes commits and creates Release PR
 3. Merge Release PR to trigger release
-4. GoReleaser builds binaries and publishes Docker images
-
-### Docker Images
-
-Releases are published to GitHub Container Registry:
-
-```bash
-# Pull specific version
-docker pull ghcr.io/hazzardr/baduk-online:v0.1.0
-
-# Pull latest
-docker pull ghcr.io/hazzardr/baduk-online:latest
-
-# Run container
-docker run -p 4000:4000 \
-  -e POSTGRES_URL="postgres://user:pass@host:5432/baduk" \
-  ghcr.io/hazzardr/baduk-online:latest
-```
+4. GoReleaser builds binaries and publishes a GitHub release
 
 ## Documentation
 
@@ -356,18 +355,18 @@ docker run -p 4000:4000 \
 ## Code Style & Conventions
 
 ### Frontend
-- **Formatting**: Prettier
-- **Linting**: Astro check
-- **Type checking**: TypeScript 5
+- **Formatting**: `pnpm fmt` (Prettier)
+- **Linting**: `pnpm lint` (eslint)
+- **Type checking**: `pnpm exec tsc --noEmit` (TypeScript), `pnpm exec astro check` (Astro)
 - **Styling**: TailwindCSS 4 + DaisyUI 5
-- **Testing**: Vitest
+- **Testing**: `pnpm test` (Vitest)
 
 ### Backend
 - **Logging**: structured logging with slog
 - **Error handling**: Explicit error responses with proper HTTP status codes
 - **Testing**: Integration tests with testcontainers
 - **Rate limiting**: Per-IP sliding window
-- **Timeouts**: Request (10s), Database (3s), Graceful shutdown (10s)
+- **Timeouts**: read timeout 10 seconds (middleware), read timeout 5 seconds (HTTP), write timeout 10 seconds (HTTP), database operation timeout 3 seconds, graceful shutdown 10 seconds
 
 ## Contributing
 
@@ -375,7 +374,7 @@ docker run -p 4000:4000 \
 2. Make changes following code conventions
 3. Commit with conventional commit messages
 4. Push branch and create pull request
-5. CI will run tests, linting, and type checking
+5. CI runs Go tests, linting, and type checking (frontend CI tracked in issue #27)
 6. Merge when all checks pass
 
 ## License

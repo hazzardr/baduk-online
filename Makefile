@@ -16,9 +16,14 @@ update:
 	go get -u
 	go mod tidy
 
-.PHONY: build ## builds the project into a binary
-build:
-	go build -o ./bin/$(PROJECT_NAME) .
+.PHONY: frontend/build ## build the static frontend into frontend/dist
+frontend/build:
+	pnpm --dir frontend install --frozen-lockfile
+	pnpm --dir frontend build
+
+.PHONY: build ## build the binary with the frontend embedded
+build: frontend/build
+	go build -tags embedfrontend -o ./bin/$(PROJECT_NAME) .
 
 .PHONY: clean ## delete generated code
 clean:

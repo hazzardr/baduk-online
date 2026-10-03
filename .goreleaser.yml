@@ -12,9 +12,15 @@ before:
   hooks:
     - go mod tidy
     - go generate ./...
+    # The frontend is embedded in the binary (see frontend_embed.go).
+    - pnpm --dir frontend install --frozen-lockfile
+    - pnpm --dir frontend build
 
 builds:
-  - env:
+  - binary: baduk
+    tags:
+      - embedfrontend
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -22,14 +28,9 @@ builds:
 
 archives:
   - formats: ["tar.gz"]
-    # this name template makes the OS and Arch compatible with the results of `uname`.
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # Must match the download URL in deploy/ansible/roles/service/tasks/main.yml
+    # (baduk-linux-amd64.tar.gz, baduk-linux-arm64.tar.gz).
+    name_template: "baduk-{{ .Os }}-{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}"
     # use zip for windows archives
     format_overrides:
       - goos: windows

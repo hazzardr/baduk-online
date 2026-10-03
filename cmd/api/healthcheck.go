@@ -48,8 +48,9 @@ func (api *API) checkHealth(ctx context.Context) map[string]string {
 		statuses["db"] = "OK"
 	}
 
-	err = api.mailer.Ping(ctx)
-	if err != nil {
+	if api.mailer == nil {
+		statuses["ses"] = "unavailable"
+	} else if err := api.mailer.Ping(ctx); err != nil {
 		slog.ErrorContext(ctx, "mail server conn failed", "err", err)
 		statuses["ses"] = "DOWN"
 	} else {

@@ -1,13 +1,9 @@
 ---
 import logo from "../assets/board-64.png";
 
-// Props for authentication state (future use)
-interface Props {
-  isAuthenticated?: boolean;
-  userName?: string;
-}
-
-const { isAuthenticated = false, userName = "" } = Astro.props;
+// Pages are static, so auth state is resolved in the browser: guest elements
+// ([data-auth-guest]) render by default and the script at the bottom swaps in
+// signed-in elements ([data-auth-user]) once /api/v1/user confirms a session.
 ---
 
 <header class="navbar bg-base-100">
@@ -39,18 +35,9 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
       >
         <li><a href="/">Home</a></li>
         <li><a href="/about">About</a></li>
-        {
-          !isAuthenticated && (
-            <>
-              <li>
-                <a href="/signin">Sign In</a>
-              </li>
-              <li>
-                <a href="/signup">Sign Up</a>
-              </li>
-            </>
-          )
-        }
+        <li data-auth-guest><a href="/signin">Sign In</a></li>
+        <li data-auth-guest><a href="/signup">Sign Up</a></li>
+        <li data-auth-user hidden><a href="/logout">Logout</a></li>
       </ul>
     </div>
 
@@ -101,48 +88,31 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
       </svg>
     </label>
 
-    <!-- User menu container -->
-    <div id="auth-container">
-      {
-        isAuthenticated ? (
-          <div class="dropdown dropdown-end">
-            <div
-              tabIndex={0}
-              role="button"
-              class="btn btn-ghost btn-circle avatar placeholder"
-              aria-label="User menu"
-            >
-              <div class="bg-neutral text-neutral-content rounded-full w-10">
-                <span class="text-xl">{userName.charAt(0).toUpperCase()}</span>
-              </div>
-            </div>
-            <ul class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-              <li class="menu-title">{userName}</li>
-              <li>
-                <a href="/profile">Profile</a>
-              </li>
-              <li>
-                <a href="/settings">Settings</a>
-              </li>
-              <li>
-                <hr class="my-2" />
-              </li>
-              <li>
-                <a href="/logout">Logout</a>
-              </li>
-            </ul>
-          </div>
-        ) : (
-          <div class="hidden lg:flex gap-2">
-            <a href="/signin" class="btn btn-ghost">
-              Sign In
-            </a>
-            <a href="/signup" class="btn btn-primary">
-              Sign Up
-            </a>
-          </div>
-        )
-      }
+    <!-- User menu -->
+    <div data-auth-user hidden class="dropdown dropdown-end">
+      <div
+        tabIndex={0}
+        role="button"
+        class="btn btn-ghost btn-circle avatar placeholder"
+        aria-label="User menu"
+      >
+        <div class="bg-neutral text-neutral-content rounded-full w-10">
+          <span class="text-xl" data-auth-user-initial></span>
+        </div>
+      </div>
+      <ul
+        class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52"
+      >
+        <li class="menu-title" data-auth-user-name></li>
+        <li><a href="/logout">Logout</a></li>
+      </ul>
+    </div>
+
+    <div data-auth-guest>
+      <div class="hidden lg:flex gap-2">
+        <a href="/signin" class="btn btn-ghost">Sign In</a>
+        <a href="/signup" class="btn btn-primary">Sign Up</a>
+      </div>
     </div>
   </div>
 </header>
@@ -188,43 +158,34 @@ const { isAuthenticated = false, userName = "" } = Astro.props;
   import { getCurrentUser } from "../lib/api";
 
   async function updateAuthUI() {
-    const container = document.getElementById("auth-container");
-    if (!container) return;
-
-    // If there's no session cookie, we are definitely logged out
-    if (!document.cookie.includes("session_id=")) return;
-
+    let user;
     try {
-      const { user } = await getCurrentUser();
-      if (user) {
-        // Replace container content with user menu
-        container.innerHTML = `
-          <div class="dropdown dropdown-end">
-            <div
-              tabIndex="0"
-              role="button"
-              class="btn btn-ghost btn-circle avatar placeholder"
-              aria-label="User menu"
-            >
-              <div class="bg-neutral text-neutral-content rounded-full w-10">
-                <span class="text-xl">${user.name.charAt(0).toUpperCase()}</span>
-              </div>
-            </div>
-            <ul class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-              <li class="menu-title">${user.name}</li>
-              <li><a href="/profile">Profile</a></li>
-              <li><a href="/settings">Settings</a></li>
-              <li><hr class="my-2" /></li>
-              <li><a href="/logout">Logout</a></li>
-            </ul>
-          </div>
-        `;
-      }
+      user = await getCurrentUser();
     } catch (error) {
-      console.error("Failed to hydrate auth UI:", error);
+      console.error("Failed to load auth state:", error);
+      return;
+    }
+    if (!user) return;
+
+    // textContent, not innerHTML: the user's name is user-controlled.
+    for (const el of document.querySelectorAll("[data-auth-user-name]")) {
+      el.textContent = user.name;
+    }
+    for (const el of document.querySelectorAll("[data-auth-user-initial]")) {
+      el.textContent = user.name.charAt(0).toUpperCase();
+    }
+    for (const el of document.querySelectorAll<HTMLElement>(
+      "[data-auth-guest]",
+    )) {
+      el.hidden = true;
+    }
+    for (const el of document.querySelectorAll<HTMLElement>(
+      "[data-auth-user]",
+    )) {
+      el.hidden = false;
     }
   }
 
-  // Run on page load and navigation
+  // Run on page load and after each client-side navigation
   document.addEventListener("astro:page-load", updateAuthUI);
 </script>

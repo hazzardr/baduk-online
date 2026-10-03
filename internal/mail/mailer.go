@@ -5,9 +5,9 @@ import (
 	"context"
 	"embed"
 	"errors"
-	"fmt"
 	"html/template"
 	"log/slog"
+	"net/url"
 	"time"
 
 	"github.com/hazzardr/baduk-online/internal/data"
@@ -40,14 +40,27 @@ type Mailer interface {
 
 // SESMailer implements the Mailer interface using AWS SES.
 type SESMailer struct {
-	client *ses.Client
-	db     *data.Database
+	client  *ses.Client
+	db      *data.Database
+	baseURL string
 }
 
 // NewSESMailer creates a new SESMailer instance with the provided AWS configuration and database.
-func NewSESMailer(awsCfg aws.Config, db *data.Database) *SESMailer {
+// baseURL is the public URL of the frontend (e.g. https://play.baduk.online), used to build links in emails.
+func NewSESMailer(awsCfg aws.Config, db *data.Database, baseURL string) *SESMailer {
 	client := ses.NewFromConfig(awsCfg)
-	return &SESMailer{client: client, db: db}
+	return &SESMailer{client: client, db: db, baseURL: baseURL}
+}
+
+// ActivationURL returns the frontend link that activates an account with the given token.
+func ActivationURL(baseURL, token string) (string, error) {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return "", err
+	}
+	u = u.JoinPath("activate")
+	u.RawQuery = url.Values{"code": {token}}.Encode()
+	return u.String(), nil
 }
 
 // Ping verifies the SES client can connect to AWS by listing email identities.
@@ -63,10 +76,9 @@ func (m *SESMailer) Ping(parent context.Context) error {
 
 // RegistrationEmailData holds the template data for registration emails.
 type RegistrationEmailData struct {
-	Name     string
-	Email    string
-	LoginURL string
-	Token    string
+	Name          string
+	Email         string
+	ActivationURL string
 }
 
 // SendRegistrationEmail sends an email with a verification code and redirect for account activation.
@@ -89,11 +101,15 @@ func (m *SESMailer) SendRegistrationEmail(parentCtx context.Context, user *data.
 		return err
 	}
 
+	activationURL, err := ActivationURL(m.baseURL, token.Plaintext)
+	if err != nil {
+		return errors.Join(errors.New("failed to build activation URL"), err)
+	}
+
 	registrationData := &RegistrationEmailData{
-		Name:     user.Name,
-		Email:    user.Email,
-		Token:    token.Plaintext,
-		LoginURL: fmt.Sprintf("https://play.baduk.online/activate?code=%s", token.Plaintext),
+		Name:          user.Name,
+		Email:         user.Email,
+		ActivationURL: activationURL,
 	}
 
 	htmlBody := new(bytes.Buffer)

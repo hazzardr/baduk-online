@@ -6,8 +6,10 @@ import type {
 } from "../types/api";
 import { APIError } from "../types/api";
 
+// The site is static and served from the same origin as the API: Caddy routes
+// /api/* to the backend in production, and the Vite dev proxy does it locally
+// (see astro.config.ts). Requests therefore always use a relative path.
 const API_BASE_URL = "/api/v1";
-const SERVER_API_BASE_URL = "http://localhost:4000/api/v1";
 
 /**
  * Get CSRF token from cookies
@@ -31,30 +33,17 @@ function getCSRFToken(): string | null {
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
-  clientCookies?: string,
-): Promise<{ data: T; headers: Headers }> {
+): Promise<T> {
   const csrfToken = getCSRFToken();
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
+  const headers = new Headers(options.headers);
+  headers.set("Content-Type", "application/json");
 
   // Add CSRF token header for state-changing requests
   if (csrfToken && ["POST", "PUT", "DELETE"].includes(options.method || "")) {
-    headers["X-Cross-Origin-Token"] = csrfToken;
+    headers.set("X-Cross-Origin-Token", csrfToken);
   }
 
-  // Add cookies if provided (for SSR)
-  if (clientCookies) {
-    headers["Cookie"] = clientCookies;
-  }
-
-  // Use absolute URL on server, relative on client
-  const baseUrl =
-    typeof window === "undefined" || !window.location.host
-      ? SERVER_API_BASE_URL
-      : API_BASE_URL;
-  const response = await fetch(`${baseUrl}${endpoint}`, {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
     credentials: "include", // Include cookies for session
@@ -69,7 +58,7 @@ async function apiRequest<T>(
         response.status,
       );
     }
-    return { data: {} as T, headers: response.headers };
+    return {} as T;
   }
 
   const data = await response.json();
@@ -89,7 +78,7 @@ async function apiRequest<T>(
     throw new APIError(errorMessage, response.status, errors);
   }
 
-  return { data: data as T, headers: response.headers };
+  return data as T;
 }
 
 /**
@@ -98,51 +87,29 @@ async function apiRequest<T>(
 export async function login(
   email: string,
   password: string,
-  clientCookies?: string,
-): Promise<{ data: LoginResponse; headers: Headers }> {
-  return apiRequest<LoginResponse>(
-    "/login",
-    {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    },
-    clientCookies,
-  );
+): Promise<LoginResponse> {
+  return apiRequest<LoginResponse>("/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
 }
 
 /**
  * Logout the current user
  */
-export async function logout(
-  clientCookies?: string,
-): Promise<{ data: LogoutResponse; headers: Headers }> {
-  return apiRequest<LogoutResponse>(
-    "/logout",
-    {
-      method: "POST",
-    },
-    clientCookies,
-  );
+export async function logout(): Promise<LogoutResponse> {
+  return apiRequest<LogoutResponse>("/logout", { method: "POST" });
 }
 
 /**
- * Get the current authenticated user
+ * Get the current authenticated user, or null if not signed in
  */
-export async function getCurrentUser(
-  clientCookies?: string,
-): Promise<{ user: User | null; headers?: Headers }> {
+export async function getCurrentUser(): Promise<User | null> {
   try {
-    const { data, headers } = await apiRequest<User>(
-      "/user",
-      {
-        method: "GET",
-      },
-      clientCookies,
-    );
-    return { user: data, headers };
+    return await apiRequest<User>("/user", { method: "GET" });
   } catch (error) {
     if (error instanceof APIError && error.statusCode === 401) {
-      return { user: null }; // Not authenticated
+      return null; // Not authenticated
     }
     throw error;
   }
@@ -152,11 +119,10 @@ export async function getCurrentUser(
  * Activate a user account with a token
  */
 export async function activate(token: string): Promise<User> {
-  const { data } = await apiRequest<User>("/users/activated", {
+  return apiRequest<User>("/users/activated", {
     method: "PUT",
     body: JSON.stringify({ token }),
   });
-  return data;
 }
 
 /**
@@ -166,14 +132,9 @@ export async function signup(
   name: string,
   email: string,
   password: string,
-  clientCookies?: string,
-): Promise<{ data: User; headers: Headers }> {
-  return apiRequest<User>(
-    "/users",
-    {
-      method: "POST",
-      body: JSON.stringify({ name, email, password }),
-    },
-    clientCookies,
-  );
+): Promise<User> {
+  return apiRequest<User>("/users", {
+    method: "POST",
+    body: JSON.stringify({ name, email, password }),
+  });
 }

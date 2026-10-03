@@ -13,7 +13,6 @@ func (api *API) Routes() http.Handler {
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(api.sessionManager.LoadAndSave)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(10 * time.Second))
@@ -25,6 +24,8 @@ func (api *API) Routes() http.Handler {
 
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
+		// Sessions only matter to the API; static files skip the session store lookup.
+		r.Use(api.sessionManager.LoadAndSave)
 		r.Use(api.csrfMiddleware(api.trustedOrigins))
 
 		r.Get("/health", api.handleHealthCheck)
@@ -40,5 +41,10 @@ func (api *API) Routes() http.Handler {
 
 		r.Get("/user", api.handleGetLoggedInUser)
 	})
+
+	// Everything outside /api is the static frontend, served from the same origin.
+	if api.frontend != nil {
+		r.Handle("/*", frontendHandler(api.frontend))
+	}
 	return r
 }

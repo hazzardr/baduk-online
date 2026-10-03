@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -126,7 +127,7 @@ func TestUserRegistrationIntegration(t *testing.T) {
 
 	origins := []string{"http://localhost:3000"}
 	mailer := &mockMailer{db: db}
-	api := New("test", "1.0.0", db, mailer, origins)
+	api := New("test", "1.0.0", db, mailer, origins, nil)
 	server := httptest.NewServer(api.Routes())
 	defer server.Close()
 
@@ -263,7 +264,7 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 
 	origins := []string{"http://localhost:3000"}
 	mailer := &mockMailer{db: db}
-	api := New("test", "1.0.0", db, mailer, origins)
+	api := New("test", "1.0.0", db, mailer, origins, nil)
 	server := httptest.NewServer(api.Routes())
 	defer server.Close()
 
@@ -465,4 +466,101 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 			t.Errorf("expected status 422 for reused token, got %d", activateResp2.StatusCode)
 		}
 	})
+}
+
+func TestEmailDisabledIntegration(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	origins := []string{"http://localhost:3000"}
+	// A nil mailer means SES was unavailable at startup.
+	api := New("test", "1.0.0", db, nil, origins, nil)
+	server := httptest.NewServer(api.Routes())
+	defer server.Close()
+
+	t.Run("create user returns 503 and does not insert", func(t *testing.T) {
+		payload := map[string]string{
+			"name":     "No Email User",
+			"email":    "noemail@example.com",
+			"password": "password123",
+		}
+		body, _ := json.Marshal(payload)
+
+		resp, err := http.Post(server.URL+"/api/v1/users", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatalf("failed to make request: %s", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusServiceUnavailable {
+			t.Fatalf("expected status 503, got %d", resp.StatusCode)
+		}
+
+		if _, err := db.Users.GetByEmail(context.Background(), "noemail@example.com"); err == nil {
+			t.Error("expected user not to be inserted when email is disabled")
+		}
+	})
+
+	t.Run("health check reports ses unavailable", func(t *testing.T) {
+		resp, err := http.Get(server.URL + "/api/v1/health")
+		if err != nil {
+			t.Fatalf("failed to make request: %s", err)
+		}
+		defer resp.Body.Close()
+
+		var hc struct {
+			Status map[string]string `json:"status"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&hc); err != nil {
+			t.Fatalf("failed to decode response: %s", err)
+		}
+		if hc.Status["ses"] != "unavailable" {
+			t.Errorf("expected ses status 'unavailable', got %q", hc.Status["ses"])
+		}
+	})
+}
+
+func TestFrontendRoutingIntegration(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	api := New("test", "1.0.0", db, &mockMailer{db: db}, []string{"http://localhost:3000"}, testFrontendFS())
+	server := httptest.NewServer(api.Routes())
+	defer server.Close()
+
+	tests := []struct {
+		path       string
+		wantStatus int
+		wantJSON   bool
+	}{
+		{path: "/", wantStatus: http.StatusOK, wantJSON: false},
+		{path: "/about", wantStatus: http.StatusOK, wantJSON: false},
+		{path: "/api/v1/health", wantStatus: http.StatusOK, wantJSON: true},
+		// Unknown API paths must not fall through to the frontend's 404 page.
+		{path: "/api/v1/nope", wantStatus: http.StatusNotFound, wantJSON: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			resp, err := http.Get(server.URL + tt.path)
+			if err != nil {
+				t.Fatalf("failed to make request: %s", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tt.wantStatus {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tt.wantStatus)
+			}
+			isJSON := resp.Header.Get("Content-Type") == "application/json"
+			if isJSON != tt.wantJSON {
+				t.Errorf("Content-Type = %q, wantJSON %v", resp.Header.Get("Content-Type"), tt.wantJSON)
+			}
+			if tt.path == "/api/v1/nope" {
+				body, _ := io.ReadAll(resp.Body)
+				if string(body) == "not found page" {
+					t.Error("unknown API path was served the frontend 404 page")
+				}
+			}
+		})
+	}
 }
