@@ -11,21 +11,28 @@
     state: directory
     mode: '0700'
 
-- name: Ensure /etc/containers directory exists
+# Rootless user services only run while the user has a session unless lingering
+# is enabled; without it, Postgres would not start at boot.
+- name: Enable lingering so user services start at boot
   become: true
-  file:
-    path: "/etc/containers"
-    state: directory
-    mode: '0755'
+  command: loginctl enable-linger {{ ansible_user_id }}
+  args:
+    creates: "/var/lib/systemd/linger/{{ ansible_user_id }}"
 
+# Rootless Podman reads the env file as this user, so it must live in user space.
 - name: Deploy postgres environment file
-  become: true
   template:
     src: postgres.env.j2
-    dest: "/etc/containers/postgres.env"
+    dest: "~/.config/containers/postgres.env"
     mode: '0600'
   notify:
     - restart postgres
+
+- name: Remove old root-owned postgres environment file
+  become: true
+  file:
+    path: /etc/containers/postgres.env
+    state: absent
 
 - name: Deploy db volume 
   template:

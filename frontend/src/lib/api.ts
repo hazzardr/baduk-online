@@ -6,8 +6,8 @@ import type {
 } from "../types/api";
 import { APIError } from "../types/api";
 
-// The site is static and served from the same origin as the API: Caddy routes
-// /api/* to the backend in production, and the Vite dev proxy does it locally
+// The site is served from the same origin as the API: the Go backend serves the
+// embedded build in production, and the Vite dev proxy forwards /api locally
 // (see astro.config.ts). Requests therefore always use a relative path.
 const API_BASE_URL = "/api/v1";
 

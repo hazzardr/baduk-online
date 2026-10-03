@@ -1,0 +1,10 @@
+tunnel: {{ cloudflared_credentials.TunnelID }}
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+{% for hostname in cloudflared_hostnames %}
+  - hostname: {{ hostname }}
+    service: http://localhost:{{ baduk_port }}
+{% endfor %}
+  # Required catch-all for requests that match no hostname above
+  - service: http_status:404

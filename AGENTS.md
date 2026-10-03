@@ -52,7 +52,7 @@ Full-stack baduk (Go) app. Go 1.26 backend with chi + pgx + embedded Goose migra
 - **Commits**: Use Conventional Commits (`feat:`, `fix:`, etc.). `release-please-config.json` drives versioning and updates `main.go` (the `version` constant).
 - **CI**: `.github/workflows/ci.yml` runs `go test -race`, `go vet`, golangci-lint, and CodeQL on Go changes.
 - **Release**: Merging a release-please PR creates a tag, which triggers `goreleaser.yml` to build binaries and publish a GitHub release.
-- **Deploy**: Ansible playbooks in `deploy/ansible/`. Target is Fedora with Podman quadlets, Caddy, and Postgres. Cloudflare access is managed via Terraform in `deploy/`.
+- **Deploy**: Ansible playbooks in `deploy/ansible/` target one Fedora host (local VM): the Go binary as a system service, Postgres as a rootless Podman quadlet on `127.0.0.1:5432`, and Cloudflare Tunnel (`cloudflared`) for public access. No Caddy, no inbound ports. See `deploy/README.md`.
 
 ## Planning
 

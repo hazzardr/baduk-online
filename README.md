@@ -312,10 +312,9 @@ make db/migrate
 ## Deployment
 
 See `deploy/README.md` for deployment instructions. Infrastructure includes:
-- Podman containers with systemd quadlets
-- Caddy reverse proxy with TLS
-- Cloudflare DNS
-- Ansible provisioning
+- A single Fedora host (local VM) provisioned with Ansible
+- Postgres in a rootless Podman quadlet
+- Cloudflare Tunnel (`cloudflared`) for TLS and public access, with no inbound ports
 
 ## Release Process
 
