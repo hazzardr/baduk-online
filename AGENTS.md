@@ -28,7 +28,7 @@ Full-stack baduk (Go) app. Go 1.26 backend with chi + pgx + embedded Goose migra
 
 - **Package manager**: pnpm.
 - **Dev server**: `cd frontend && pnpm dev` (port 5173). Proxies `/api` to `localhost:4000` via `astro.config.ts`.
-- **No tests currently exist** (`*.test.ts` files are absent). `pnpm test` runs `vitest`.
+- **Frontend tests**: a Vitest scaffold at `frontend/test/basic.test.ts`. No application tests yet. `pnpm test` runs `vitest`.
 - **Build**: `pnpm build` outputs to `frontend/dist/`.
 
 ## Testing
@@ -44,14 +44,18 @@ Full-stack baduk (Go) app. Go 1.26 backend with chi + pgx + embedded Goose migra
 ## Lint & typecheck
 
 - **Backend**: `make lint` (golangci-lint). Config is `.golangci.yml` — very strict, ~60 linters enabled. `make fmt` runs `go fmt`.
-- **Frontend**: `pnpm lint` (eslint), `pnpm typecheck` (tsc --noEmit), `pnpm astro check`.
+- **Frontend**: `pnpm lint` (eslint), `pnpm exec tsc --noEmit` (TypeScript), `pnpm exec astro check` (Astro).
 
 ## Release & deploy
 
 - **Commits**: Use Conventional Commits (`feat:`, `fix:`, etc.). `release-please-config.json` drives versioning and updates `main.go` (the `version` constant).
 - **CI**: `.github/workflows/ci.yml` runs `go test -race`, `go vet`, golangci-lint, and CodeQL on Go changes.
-- **Release**: Merging a release-please PR creates a tag, which triggers `goreleaser.yml` to build binaries and publish Docker images to `ghcr.io/hazzardr/baduk-online`.
+- **Release**: Merging a release-please PR creates a tag, which triggers `goreleaser.yml` to build binaries and publish a GitHub release.
 - **Deploy**: Ansible playbooks in `deploy/ansible/`. Target is Fedora with Podman quadlets, Caddy, and Postgres. Cloudflare access is managed via Terraform in `deploy/`.
+
+## Planning
+
+GitHub issues, task lists, labels, and milestones are the source of truth. See [milestone #4 — MVP: Play a complete game](https://github.com/hazzardr/baduk-online/milestone/4).
 
 ## Style & conventions
 
