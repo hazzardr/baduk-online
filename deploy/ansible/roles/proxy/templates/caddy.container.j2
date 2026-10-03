@@ -7,6 +7,7 @@ ContainerName=caddy
 Image=ghcr.io/hazzardr/caddy:main
 Network=baduk.network
 Volume=/home/baduk/caddy_etc/Caddyfile:/etc/caddy/Caddyfile:Z
+Volume={{ caddy_www_host_dir }}:{{ caddy_www_container_dir }}:ro,Z
 Volume=caddy-config.volume:/config:Z
 Volume=caddy-data.volume:/data:Z
 

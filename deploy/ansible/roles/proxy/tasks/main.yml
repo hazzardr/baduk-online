@@ -26,6 +26,30 @@
     state: directory
     mode: '0755'
 
+- name: Check that the frontend has been built
+  delegate_to: localhost
+  become: no
+  stat:
+    path: "{{ frontend_dist_dir }}/index.html"
+  register: frontend_dist
+
+- name: Fail if the frontend has not been built
+  fail:
+    msg: "{{ frontend_dist_dir }} is missing. Run `pnpm build` in frontend/ before deploying."
+  when: not frontend_dist.stat.exists
+
+- name: Ensure frontend web root exists
+  file:
+    path: "{{ caddy_www_host_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Deploy frontend static files
+  copy:
+    src: "{{ frontend_dist_dir }}/"
+    dest: "{{ caddy_www_host_dir }}/"
+    mode: preserve
+
 - name: Deploy Caddy configuration
   template:
     src: Caddyfile.j2

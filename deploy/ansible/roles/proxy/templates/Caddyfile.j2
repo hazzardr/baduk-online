@@ -24,11 +24,28 @@
         X-XSS-Protection "1; mode=block"
     }
 
-    reverse_proxy 127.0.0.1:{{ baduk_port }} {
-        header_up Host {host}
-        header_up X-Real-IP {remote}
-        header_up X-Forwarded-For {remote}
-        header_up X-Forwarded-Proto {scheme}
+    # API requests go to the Go backend
+    handle /api/* {
+        reverse_proxy 127.0.0.1:{{ baduk_port }} {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Everything else is the static Astro build (frontend/dist), served from the
+    # same origin so session cookies and CSRF checks work without CORS.
+    handle {
+        root * {{ caddy_www_container_dir }}
+        try_files {path} {path}/index.html
+        file_server
+    }
+
+    handle_errors 404 {
+        root * {{ caddy_www_container_dir }}
+        rewrite * /404.html
+        file_server
     }
 }
 

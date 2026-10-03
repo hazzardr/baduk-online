@@ -20,7 +20,8 @@ Full-stack baduk (Go) app. Go 1.26 backend with chi + pgx + embedded Goose migra
   make run        # go run .
   ```
   Server listens on `:4000`.
-- **AWS SES is mandatory at startup**. `main.go` initializes an SES mailer and pings it; missing AWS creds will cause immediate exit. In tests, use the `mockMailer` pattern from `cmd/api/users_test.go`.
+- **AWS SES is optional at startup**. `main.go` loads AWS config and pings SES; on failure it logs a warning and passes a nil mailer, so registration returns 503 and `/api/v1/health` reports `ses: unavailable`. Handlers must nil-check `api.mailer`. In tests, use the `mockMailer` pattern from `cmd/api/users_test.go`, or pass `nil` to test email-disabled behaviour.
+- **Configuration**: flags default to env vars (`PORT`, `ENV`, `LOG_FMT`, `POSTGRES_URL`, `BASE_URL`, `TRUSTED_ORIGINS`). `BASE_URL` is the frontend's public URL, used for email links.
 - **Migrations**: SQL files are `//go:embed`-ed. You can also run them in-process with `./baduk.online -migrate`. Goose CLI is used by `make db/migrate`.
 - **Go version**: `go.mod` specifies `1.26.2`. CI workflows use `1.26.2`.
 
@@ -61,5 +62,5 @@ GitHub issues, task lists, labels, and milestones are the source of truth. See [
 
 - Backend logging uses `slog` (often via `charmbracelet/log` adapter).
 - JSON helpers (`writeJSON`, `readJSON`) are in `cmd/api/helpers.go`; prefer them over raw `json.NewEncoder`.
-- Frontend auth state is populated in `Astro.locals` by `src/middleware/auth.ts`, which checks the `session_id` cookie and calls `/api/v1/user`.
-- CSRF: backend sets `cross-origin-token` cookie; frontend reads it and sends `X-Cross-Origin-Token` header for mutating requests.
+- The frontend is a **static** build (no SSR adapter), served from the same origin as the API. Never rely on `Astro.locals` or `Astro.request` for auth: resolve it in the browser with `getCurrentUser()` from `src/lib/api.ts`. `Header.astro` toggles `[data-auth-guest]` / `[data-auth-user]` elements. Set user-controlled text with `textContent`, not `innerHTML`.
+- CSRF: the backend uses Go's `http.CrossOriginProtection` (Sec-Fetch-Site/Origin checks against `TRUSTED_ORIGINS`), so same-origin browser requests pass without a token.

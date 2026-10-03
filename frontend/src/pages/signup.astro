@@ -1,12 +1,5 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-
-const { isAuthenticated } = Astro.locals;
-
-// If already authenticated, redirect to home
-if (isAuthenticated) {
-  return Astro.redirect("/");
-}
 ---
 
 <BaseLayout title="Sign Up - baduk.online">
@@ -171,8 +164,15 @@ if (isAuthenticated) {
   </div>
 
   <script>
-    import { signup } from "../lib/api";
+    import { getCurrentUser, signup } from "../lib/api";
     import { APIError } from "../types/api";
+
+    // Already signed in: nothing to do here.
+    getCurrentUser()
+      .then((user) => {
+        if (user) window.location.replace("/");
+      })
+      .catch(() => {});
 
     const form = document.getElementById("signup-form") as HTMLFormElement;
     const nameInput = document.getElementById("name") as HTMLInputElement;

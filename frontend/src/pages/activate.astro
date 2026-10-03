@@ -1,12 +1,5 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-
-const { isAuthenticated } = Astro.locals;
-
-// If already authenticated and validated, redirect to home
-if (isAuthenticated && Astro.locals.userValidated) {
-  return Astro.redirect("/");
-}
 ---
 
 <BaseLayout title="Activate Account - baduk.online">

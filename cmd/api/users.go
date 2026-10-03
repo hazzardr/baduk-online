@@ -57,6 +57,11 @@ func (api *API) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if api.mailer == nil {
+		api.errorResponse(w, r, http.StatusServiceUnavailable, "email service unavailable; registration is disabled")
+		return
+	}
+
 	err = api.db.Users.Insert(r.Context(), user)
 	if err != nil {
 		switch {
@@ -92,6 +97,11 @@ func (api *API) handleSendRegistrationEmail(w http.ResponseWriter, r *http.Reque
 		}
 		return
 	}
+	if api.mailer == nil {
+		api.errorResponse(w, r, http.StatusServiceUnavailable, "email service unavailable")
+		return
+	}
+
 	err = api.mailer.SendRegistrationEmail(r.Context(), user)
 	if err != nil {
 		slog.Error("failed to send registration email", "user", user.Email, "err", err)
@@ -155,13 +165,16 @@ func (api *API) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Send activation confirmation email asynchronously
-	api.background(func() {
-		err := api.mailer.SendAccountActivatedEmail(context.Background(), user)
-		if err != nil {
-			slog.Error("failed to send account activated email", "user", user.Email, "err", err)
-		}
-	})
+	// Send activation confirmation email asynchronously (skip if email disabled).
+	if api.mailer != nil {
+		api.background(func() {
+			ctx := context.Background()
+			err := api.mailer.SendAccountActivatedEmail(ctx, user)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed to send account activated email", "user", user.Email, "err", err)
+			}
+		})
+	}
 
 	userDetails := map[string]any{
 		"name":      user.Name,

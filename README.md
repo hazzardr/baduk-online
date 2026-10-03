@@ -39,7 +39,7 @@ GitHub issues, task lists, labels, and milestones are the source of truth for tr
 - PostgreSQL 17.5+
 - pnpm 9.15.4+
 - Podman (for local testing)
-- AWS credentials (required at startup — server exits without them)
+- AWS credentials for SES (optional locally — without them the server starts with email disabled, and registration returns 503)
 
 ### Quick Start
 
@@ -228,14 +228,27 @@ All endpoints are under `/api/v1`:
 
 **Optional (with defaults):**
 - `PORT` - API server port (default: 4000)
-- `ENV` - Environment name: `development`, `production` (default: development)
+- `ENV` - Environment name: `development`, `production` (default: development). `production` marks session cookies `Secure`.
 - `LOG_FMT` - Log format: `text`, `json` (default: text)
+- `BASE_URL` - Public URL of the frontend, used for links in emails (default: `https://play.baduk.online`). Must be an absolute `http(s)` URL or the server exits.
+- `TRUSTED_ORIGINS` - Comma-separated origins trusted for CSRF protection (default: `https://play.baduk.online` plus localhost dev ports)
 
-**AWS Credentials** (for email in production):
+Each variable can also be set with the matching flag (`-port`, `-env`, `-logFmt`, `-base-url`, `-trusted-origins`, `-dsn`); a flag overrides the environment.
+
+**AWS Credentials** (for email):
 - Configure via standard AWS SDK methods:
-  - Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+  - Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
   - Credentials file: `~/.aws/credentials`
   - IAM role (on EC2/Lambda)
+- At startup the server loads AWS config and pings SES. If either fails, it logs a warning and starts with **email disabled**:
+  - `POST /api/v1/users` and `POST /api/v1/users/register` return `503 Service Unavailable` (no account can be created or activated)
+  - `GET /api/v1/health` reports `"ses": "unavailable"`
+- Production must have working SES credentials; check the health endpoint after deploy.
+
+**Frontend:**
+- The frontend is a static Astro build. The browser always calls the API at the relative path `/api/v1`, so the frontend and API must share an origin: Caddy serves `frontend/dist` and routes `/api/*` to the backend in production, and the Vite dev proxy does the same locally.
+- `API_URL` - Where the dev proxy (`pnpm dev`) sends `/api` requests (default: `http://localhost:4000`)
+- `SITE_URL` - Canonical site URL used by Astro at build time (default: `https://play.baduk.online`)
 
 ## Testing
 

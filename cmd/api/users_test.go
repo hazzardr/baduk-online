@@ -466,3 +466,55 @@ func TestRegistrationTokenWorkflow(t *testing.T) {
 		}
 	})
 }
+
+func TestEmailDisabledIntegration(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	origins := []string{"http://localhost:3000"}
+	// A nil mailer means SES was unavailable at startup.
+	api := New("test", "1.0.0", db, nil, origins)
+	server := httptest.NewServer(api.Routes())
+	defer server.Close()
+
+	t.Run("create user returns 503 and does not insert", func(t *testing.T) {
+		payload := map[string]string{
+			"name":     "No Email User",
+			"email":    "noemail@example.com",
+			"password": "password123",
+		}
+		body, _ := json.Marshal(payload)
+
+		resp, err := http.Post(server.URL+"/api/v1/users", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatalf("failed to make request: %s", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusServiceUnavailable {
+			t.Fatalf("expected status 503, got %d", resp.StatusCode)
+		}
+
+		if _, err := db.Users.GetByEmail(context.Background(), "noemail@example.com"); err == nil {
+			t.Error("expected user not to be inserted when email is disabled")
+		}
+	})
+
+	t.Run("health check reports ses unavailable", func(t *testing.T) {
+		resp, err := http.Get(server.URL + "/api/v1/health")
+		if err != nil {
+			t.Fatalf("failed to make request: %s", err)
+		}
+		defer resp.Body.Close()
+
+		var hc struct {
+			Status map[string]string `json:"status"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&hc); err != nil {
+			t.Fatalf("failed to decode response: %s", err)
+		}
+		if hc.Status["ses"] != "unavailable" {
+			t.Errorf("expected ses status 'unavailable', got %q", hc.Status["ses"])
+		}
+	})
+}
