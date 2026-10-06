@@ -372,8 +372,8 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 1. Create a feature branch from `main`
 2. Make changes following code conventions
-3. Commit with conventional commit messages
-4. Push branch and create pull request
+3. Commit with conventional commit messages that reference the issues they affect (see AGENTS.md)
+4. Push branch and create a pull request that links its issues
 5. CI runs Go tests, linting, and type checking (frontend CI tracked in issue #27)
 6. Merge when all checks pass
 
