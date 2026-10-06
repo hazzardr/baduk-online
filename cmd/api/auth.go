@@ -80,30 +80,29 @@ func (api *API) handleSignInCallback(w http.ResponseWriter, r *http.Request) {
 	state := api.sessionManager.PopString(ctx, string(oauthStateSessionKey))
 	nonce := api.sessionManager.PopString(ctx, string(oauthNonceSessionKey))
 	verifier := api.sessionManager.PopString(ctx, string(oauthVerifierSessionKey))
-	log := slog.With("provider", provider.Name())
 
 	q := r.URL.Query()
 	if reason := q.Get("error"); reason != "" {
-		log.InfoContext(ctx, "sign-in not completed", "error", reason)
+		slog.InfoContext(ctx, "sign-in not completed", "provider", provider.Name(), "error", reason)
 		redirectToSignIn(w, r, signInCancelled)
 		return
 	}
 	if state == "" || startedWith != provider.Name() ||
 		subtle.ConstantTimeCompare([]byte(q.Get("state")), []byte(state)) != 1 {
-		log.WarnContext(ctx, "sign-in state mismatch", "ip", r.RemoteAddr)
+		slog.WarnContext(ctx, "sign-in state mismatch", "provider", provider.Name(), "ip", r.RemoteAddr)
 		redirectToSignIn(w, r, signInExpired)
 		return
 	}
 
 	claims, err := provider.Exchange(ctx, q.Get("code"), verifier, nonce)
 	if err != nil {
-		log.ErrorContext(ctx, "sign-in failed", "err", err)
+		slog.ErrorContext(ctx, "sign-in failed", "provider", provider.Name(), "err", err)
 		redirectToSignIn(w, r, signInFailed)
 		return
 	}
 	// Email is optional, but one the provider hasn't verified can't be trusted.
 	if claims.Email != "" && !claims.EmailVerified {
-		log.WarnContext(ctx, "sign-in rejected: email not verified", "subject", claims.Subject)
+		slog.WarnContext(ctx, "sign-in rejected: email not verified", "provider", provider.Name(), "subject", claims.Subject)
 		redirectToSignIn(w, r, signInEmailUnverified)
 		return
 	}
@@ -111,23 +110,24 @@ func (api *API) handleSignInCallback(w http.ResponseWriter, r *http.Request) {
 	user, err := api.userForIdentity(ctx, provider.Name(), claims)
 	if err != nil {
 		if errors.Is(err, data.ErrDuplicateEmail) {
-			log.WarnContext(ctx, "sign-in rejected: email belongs to another user", "subject", claims.Subject)
+			slog.WarnContext(ctx, "sign-in rejected: email belongs to another user",
+				"provider", provider.Name(), "subject", claims.Subject)
 			redirectToSignIn(w, r, signInEmailInUse)
 			return
 		}
-		log.ErrorContext(ctx, "sign-in failed", "err", err)
+		slog.ErrorContext(ctx, "sign-in failed", "provider", provider.Name(), "err", err)
 		redirectToSignIn(w, r, signInFailed)
 		return
 	}
 
 	// A new session token on sign-in prevents session fixation.
 	if err := api.sessionManager.RenewToken(ctx); err != nil {
-		log.ErrorContext(ctx, "renewing session token failed", "err", err)
+		slog.ErrorContext(ctx, "renewing session token failed", "provider", provider.Name(), "err", err)
 		redirectToSignIn(w, r, signInFailed)
 		return
 	}
 	api.sessionManager.Put(ctx, string(userIDSessionKey), user.ID)
-	log.InfoContext(ctx, "user signed in", "user_id", user.ID, "ip", r.RemoteAddr)
+	slog.InfoContext(ctx, "user signed in", "provider", provider.Name(), "user_id", user.ID, "ip", r.RemoteAddr)
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
