@@ -4,7 +4,7 @@ A full-stack web application for baduk (Go/Weiqi) online play. Built with Go RES
 
 ## Overview
 
-**baduk.online** provides user registration, authentication, and online baduk gameplay.
+**baduk.online** lets you sign in with Google and play your online baduk games.
 
 ### MVP Scope
 
@@ -21,7 +21,7 @@ GitHub issues, task lists, labels, and milestones are the source of truth for tr
 **Backend:**
 - Go 1.26 with chi HTTP router
 - PostgreSQL with pgx driver
-- AWS SES for transactional emails
+- Google sign-in (OpenID Connect) with coreos/go-oidc
 - Session management with alexedwards/scs
 - Rate limiting and CSRF protection
 
@@ -39,7 +39,7 @@ GitHub issues, task lists, labels, and milestones are the source of truth for tr
 - PostgreSQL 17.5+
 - pnpm 9.15.4+
 - Podman (for local testing)
-- AWS credentials for SES (optional locally — without them the server starts with email disabled, and registration returns 503)
+- A Google OAuth client (optional locally — without one the server starts with Google sign-in disabled). See [Environment Variables](#environment-variables).
 
 ### Quick Start
 
@@ -111,9 +111,8 @@ make db/migration/status  # Check migration status
 
 ```
 cmd/api/               # HTTP handlers, routes, middleware, API struct
+internal/auth/         # OpenID Connect sign-in (Google); authtest/ is a fake provider for tests
 internal/data/         # Database models, queries, stores
-internal/mail/         # AWS SES email service
-internal/validator/    # Input validation helpers
 migrations/            # Goose SQL migrations
 frontend/              # Astro.js frontend
   src/
@@ -135,10 +134,9 @@ deploy/                # Ansible & Terraform configs
 - Session management with PostgreSQL backend
 - Rate limiting per IP
 - CSRF protection with trusted origins
-- Background job queue with graceful shutdown
 
 **Database Layer** (`internal/data/`):
-- Store pattern for data operations (Users, Registration)
+- Store pattern for data operations (Users, Identities)
 - pgxpool for connection pooling
 - Goose migrations for schema management
 
@@ -155,10 +153,8 @@ deploy/                # Ansible & Terraform configs
 - File-based routing in `src/pages/`
 
 **Authentication Flow**:
-- Middleware checks `session_id` cookie on each request
-- Populates `Astro.locals` with user info for pages
-- Protected pages redirect if not authenticated
-- CSRF tokens in cookies for state-changing requests
+- Pages are static; the browser resolves auth state with `GET /api/v1/user` (`getCurrentUser()` in `src/lib/api.ts`)
+- "Sign in with Google" is a full-page link to `/api/v1/auth/google/start`; the backend handles the redirects and sends the browser back to `/` (or `/signin?error=<code>`)
 
 ## API Endpoints
 
@@ -166,38 +162,24 @@ All endpoints are under `/api/v1`:
 
 ### Authentication
 
-- `POST /login` - Authenticate user (email, password)
-  - Rate limit: 10 attempts/hour per IP
-  - Returns: user info (name, email, validated)
-  - Sets session cookie (24-hour lifetime)
+- `GET /auth/google/start` - Browser navigation: redirects to Google to sign in
+  - Rate limit: 20 attempts/hour per IP
+  - Redirects to `/` if already signed in
+- `GET /auth/google/callback` - Google redirects here after sign-in
+  - On success: creates the user on first sign-in, sets the session cookie (24-hour lifetime), and redirects to `/`
+  - On failure: redirects to `/signin?error=<code>` (`unavailable`, `cancelled`, `expired`, `failed`, `email_unverified`, `email_in_use`)
 
 - `POST /logout` - Destroy user session
   - Returns: success message
 
-- `GET /user` - Get logged-in user info
-  - Requires: valid session
-  - Returns: user info
-
-### User Management
-
-- `POST /users` - Create new user account (register)
-  - Rate limit: 10 attempts/hour per IP
-  - Sends registration email asynchronously
-  - Returns: user info
-
-- `PUT /users/activated` - Activate account with token
-  - Rate limit: 5 attempts/hour per IP
-  - Requires: activation token from email
-  - Returns: user info
-
-- `POST /users/register` - Resend registration email
-  - Requires: valid session
-  - Returns: success message
+- `GET /user` - Get signed-in user info
+  - Requires: valid session (401 otherwise)
+  - Returns: `name`, `email`, `created_at`
 
 ### Health
 
 - `GET /health` - Health check
-  - Returns: `{"status": "OK"}`
+  - Returns: `status` (`db`, `google`), `env`, `version`
 
 ## Authentication
 
@@ -206,20 +188,15 @@ All endpoints are under `/api/v1`:
 - **Lifetime**: 24 hours
 - **Storage**: PostgreSQL
 - **Cookies**: HttpOnly, Secure (in production), SameSite
-- **CSRF**: Cross-origin token in header
+- **CSRF**: Go's `http.CrossOriginProtection` (Sec-Fetch-Site/Origin checks against `TRUSTED_ORIGINS`)
+- **Session fixation**: the session token is renewed at sign-in
 
-### Password Security
+### Sign-in
 
-- **Algorithm**: bcrypt with cost 12
-- **Validation**: 8-72 characters
-- **Hashing**: Immediate on input, never stored plaintext
-
-### User Activation
-
-- **Token**: Cryptographically secure random token
-- **TTL**: 30 minutes
-- **Delivery**: Via AWS SES email
-- **Validation**: User marked as validated on successful activation
+- **Providers**: Google (OpenID Connect). baduk.online's `users` row is the account; sign-in identities in `identities` link to it by `(provider, subject)`, so more providers can be added later.
+- **Flow**: authorization code with PKCE. `state`, `nonce` and the PKCE verifier are single-use values kept in the session.
+- **Lookup**: users are found by `(provider, subject)`, never by email. The first sign-in creates the user.
+- **Email**: sign-in is rejected unless Google reports the email as verified. If another user already has the email, sign-in is rejected (`email_in_use`).
 
 ## Environment Variables
 
@@ -230,20 +207,17 @@ All endpoints are under `/api/v1`:
 - `PORT` - API server port (default: 4000)
 - `ENV` - Environment name: `development`, `production` (default: development). `production` marks session cookies `Secure`.
 - `LOG_FMT` - Log format: `text`, `json` (default: text)
-- `BASE_URL` - Public URL of the frontend, used for links in emails (default: `https://play.baduk.online`). Must be an absolute `http(s)` URL or the server exits.
+- `BASE_URL` - Public URL of the site (default: `https://play.baduk.online`). Google redirects back to `BASE_URL/api/v1/auth/google/callback`, so set it to `http://localhost:5173` for local dev. Must be an absolute `http(s)` URL or the server exits.
 - `TRUSTED_ORIGINS` - Comma-separated origins trusted for CSRF protection (default: `https://play.baduk.online` plus localhost dev ports)
 
-Each variable can also be set with the matching flag (`-port`, `-env`, `-logFmt`, `-base-url`, `-trusted-origins`, `-dsn`); a flag overrides the environment.
+Each variable can also be set with the matching flag (`-port`, `-env`, `-logFmt`, `-base-url`, `-trusted-origins`, `-dsn`, `-google-client-id`); a flag overrides the environment.
 
-**AWS Credentials** (for email):
-- Configure via standard AWS SDK methods:
-  - Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
-  - Credentials file: `~/.aws/credentials`
-  - IAM role (on EC2/Lambda)
-- At startup the server loads AWS config and pings SES. If either fails, it logs a warning and starts with **email disabled**:
-  - `POST /api/v1/users` and `POST /api/v1/users/register` return `503 Service Unavailable` (no account can be created or activated)
-  - `GET /api/v1/health` reports `"ses": "unavailable"`
-- Production must have working SES credentials; check the health endpoint after deploy.
+**Google sign-in:**
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` - an OAuth client of type "Web application" whose authorized redirect URIs include `BASE_URL/api/v1/auth/google/callback` (setup steps: `deploy/README.md`). The secret is read only from the environment, never a flag.
+- At startup the server fetches Google's discovery document. If the credentials are unset or that fails, it logs a warning and starts with **Google sign-in disabled**:
+  - `/api/v1/auth/google/*` redirect to `/signin?error=unavailable`
+  - `GET /api/v1/health` reports `"google": "unavailable"`
+- With `ENV=production` the server exits instead, and systemd restarts it until Google is reachable.
 
 **Frontend:**
 - The frontend is a static Astro build. The browser always calls the API at the relative path `/api/v1`, so the frontend and API share an origin:
@@ -264,10 +238,9 @@ make test         # Run all tests
 ```
 
 Tests are located in `cmd/api/*_test.go` and cover:
-- User registration flow
-- Account activation
+- Google sign-in against a fake OpenID Connect provider (`internal/auth/authtest`)
 - Session management
-- Email sending
+- Frontend routing
 
 ### Frontend Tests
 
@@ -281,7 +254,8 @@ Migrations use Goose and are located in `migrations/`:
 
 1. `001_users.sql` - Users table with email uniqueness
 2. `002_sessions.sql` - Session storage (scs)
-3. `003_registration.sql` - Registration tokens
+3. `003_registration.sql` - Registration tokens (dropped by 004)
+4. `004_identities.sql` - Sign-in identities; removes passwords and existing password accounts
 
 ### Running Migrations
 
@@ -293,18 +267,17 @@ make db/migrate
 ### Schema
 
 **users** table:
-- `id` (UUID primary key)
+- `id` (bigserial primary key)
 - `name` (text)
 - `email` (text, unique, citext)
-- `password_hash` (bytea)
-- `validated` (boolean)
 - `created_at` (timestamp)
 - `version` (integer, for optimistic locking)
 
-**registration_tokens** table:
-- `hash` (bytea, primary key)
-- `user_id` (UUID)
-- `expiry` (timestamp)
+**identities** table:
+- `provider`, `subject` (text, primary key together)
+- `user_id` (references `users`)
+- `email` (citext, as last reported by the provider), `email_verified` (boolean)
+- `created_at` (timestamp)
 
 **sessions** table:
 - Created automatically by scs session manager

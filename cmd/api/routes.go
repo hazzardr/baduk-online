@@ -17,10 +17,7 @@ func (api *API) Routes() http.Handler {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(10 * time.Second))
 
-	// Create rate limiters
-	activationRateLimiter := newRateLimiter(5, time.Hour)
-	userCreationRateLimiter := newRateLimiter(10, time.Hour)
-	loginRateLimiter := newRateLimiter(10, time.Hour)
+	signInRateLimiter := newRateLimiter(20, time.Hour)
 
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
@@ -30,13 +27,10 @@ func (api *API) Routes() http.Handler {
 
 		r.Get("/health", api.handleHealthCheck)
 
-		// Public endpoints
-		r.With(api.rateLimitMiddleware(userCreationRateLimiter)).Post("/users", api.handleCreateUser)
-		r.Post("/users/register", api.handleSendRegistrationEmail)
-		r.With(api.rateLimitMiddleware(activationRateLimiter)).Put("/users/activated", api.handleRegisterUser)
-
-		// Login/Logout
-		r.With(api.rateLimitMiddleware(loginRateLimiter)).Post("/login", api.handleLogin)
+		// Sign-in is a browser redirect flow: start sends the browser to Google, and Google
+		// sends it back to callback.
+		r.With(api.rateLimitMiddleware(signInRateLimiter)).Get("/auth/google/start", api.handleGoogleStart)
+		r.Get("/auth/google/callback", api.handleGoogleCallback)
 		r.Post("/logout", api.handleLogout)
 
 		r.Get("/user", api.handleGetLoggedInUser)

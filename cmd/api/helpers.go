@@ -112,11 +112,6 @@ func (api *API) failedValidationResponse(w http.ResponseWriter, r *http.Request,
 	api.errorResponse(w, r, http.StatusUnprocessableEntity, errors)
 }
 
-func (api *API) dataConflictResponse(w http.ResponseWriter, r *http.Request, err error) {
-	slog.Warn("tried to modify stale data", "err", err)
-	api.errorResponse(w, r, http.StatusConflict, "tried to modify stale data, please refresh")
-}
-
 func (api *API) rateLimitExceededResponse(w http.ResponseWriter, r *http.Request) {
 	slog.Warn("rate limit exceeded", "method", r.Method, "uri", r.URL.RequestURI(), "ip", r.RemoteAddr)
 	api.errorResponse(w, r, http.StatusTooManyRequests, "rate limit exceeded, please try again later")
@@ -127,30 +122,12 @@ func (api *API) csrfFailureResponse(w http.ResponseWriter, r *http.Request) {
 	api.errorResponse(w, r, http.StatusForbidden, "CSRF check failed")
 }
 
-// background will launch the given function on a background goRoutine with recovery handlers.
-func (api *API) background(fn func()) {
-	withRecoverPanic := func(caller func()) {
-		defer func() {
-			pv := recover()
-			if pv != nil {
-				slog.Error("error executing function", "panic", fmt.Sprintf("%v", pv))
-			}
-		}()
-		caller()
-	}
-	api.wg.Go(func() {
-		withRecoverPanic(fn)
-	})
-}
-
 // Begin session helpers
 
 func (api *API) getUserFromContext(r *http.Request) (*data.User, error) {
-	exists := api.sessionManager.Exists(r.Context(), string(userContextKey))
-	if !exists {
+	id := api.sessionManager.GetInt64(r.Context(), string(userIDSessionKey))
+	if id == 0 {
 		return nil, errUserUnauthenticated
 	}
-	email := api.sessionManager.GetString(r.Context(), string(userContextKey))
-	user, err := api.db.Users.GetByEmail(r.Context(), email)
-	return user, err
+	return api.db.Users.GetByID(r.Context(), id)
 }

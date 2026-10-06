@@ -8,15 +8,15 @@ import (
 
 	"github.com/alexedwards/scs/pgxstore"
 	"github.com/alexedwards/scs/v2"
+	"github.com/hazzardr/baduk-online/internal/auth"
 	"github.com/hazzardr/baduk-online/internal/data"
-	"github.com/hazzardr/baduk-online/internal/mail"
 )
 
 type API struct {
 	environment    string
 	version        string
 	db             *data.Database
-	mailer         mail.Mailer
+	google         *auth.Provider
 	sessionManager *scs.SessionManager
 	trustedOrigins []string
 	frontend       fs.FS
@@ -28,11 +28,12 @@ type API struct {
 	healthCachedAt time.Time
 }
 
-// New creates the API. frontend is the static site to serve outside /api, or nil to serve only the API.
+// New creates the API. google is the Google sign-in provider, or nil if Google sign-in is
+// unavailable. frontend is the static site to serve outside /api, or nil to serve only the API.
 func New(
 	environment, version string,
 	db *data.Database,
-	mailer mail.Mailer,
+	google *auth.Provider,
 	trustedOrigins []string,
 	frontend fs.FS,
 ) *API {
@@ -47,7 +48,7 @@ func New(
 		environment:    environment,
 		version:        version,
 		db:             db,
-		mailer:         mailer,
+		google:         google,
 		sessionManager: sm,
 		trustedOrigins: trustedOrigins,
 		frontend:       frontend,

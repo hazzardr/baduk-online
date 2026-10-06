@@ -1,5 +1,4 @@
 import type {
-  LoginResponse,
   LogoutResponse,
   User,
   ErrorResponse,
@@ -82,19 +81,6 @@ async function apiRequest<T>(
 }
 
 /**
- * Login with email and password
- */
-export async function login(
-  email: string,
-  password: string,
-): Promise<LoginResponse> {
-  return apiRequest<LoginResponse>("/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-}
-
-/**
  * Logout the current user
  */
 export async function logout(): Promise<LogoutResponse> {
@@ -113,28 +99,4 @@ export async function getCurrentUser(): Promise<User | null> {
     }
     throw error;
   }
-}
-
-/**
- * Activate a user account with a token
- */
-export async function activate(token: string): Promise<User> {
-  return apiRequest<User>("/users/activated", {
-    method: "PUT",
-    body: JSON.stringify({ token }),
-  });
-}
-
-/**
- * Sign up a new user
- */
-export async function signup(
-  name: string,
-  email: string,
-  password: string,
-): Promise<User> {
-  return apiRequest<User>("/users", {
-    method: "POST",
-    body: JSON.stringify({ name, email, password }),
-  });
 }

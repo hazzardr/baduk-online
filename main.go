@@ -16,11 +16,10 @@ import (
 	"syscall"
 	"time"
 
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/charmbracelet/log"
 	"github.com/hazzardr/baduk-online/cmd/api"
+	"github.com/hazzardr/baduk-online/internal/auth"
 	"github.com/hazzardr/baduk-online/internal/data"
-	"github.com/hazzardr/baduk-online/internal/mail"
 )
 
 const version = "0.1.0"
@@ -36,6 +35,9 @@ type config struct {
 	migrate        bool
 	trustedOrigins string
 	baseURL        string
+	googleClientID string
+	// googleClientSecret is read from GOOGLE_CLIENT_SECRET only, so it never appears in -help output.
+	googleClientSecret string
 }
 
 func main() {
@@ -61,8 +63,15 @@ func main() {
 		&cfg.baseURL,
 		"base-url",
 		envString("BASE_URL", "https://play.baduk.online"),
-		"Public URL of the frontend, used for links in emails (env BASE_URL)",
+		"Public URL of the site, used for OAuth redirect URLs (env BASE_URL)",
 	)
+	flag.StringVar(
+		&cfg.googleClientID,
+		"google-client-id",
+		os.Getenv("GOOGLE_CLIENT_ID"),
+		"Google OAuth client ID; Google sign-in is disabled without it (env GOOGLE_CLIENT_ID)",
+	)
+	cfg.googleClientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
 
 	flag.Parse()
 
@@ -78,7 +87,7 @@ func main() {
 	ctx := context.Background()
 	configureLogger(cfg)
 	db := configureDB(cfg)
-	mailer := configureMailer(ctx, db, cfg.baseURL)
+	google := configureGoogle(ctx, cfg)
 
 	frontend := frontendFS()
 	if frontend == nil {
@@ -90,7 +99,7 @@ func main() {
 	}
 
 	trustedOrigins := parseTrustedOrigins(cfg.trustedOrigins)
-	apiInstance := api.New(cfg.env, version, db, mailer, trustedOrigins, frontend)
+	apiInstance := api.New(cfg.env, version, db, google, trustedOrigins, frontend)
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
 		Handler:      apiInstance.Routes(),
@@ -126,23 +135,33 @@ func main() {
 	os.Exit(0)
 }
 
-// configureMailer returns a working SES mailer, or nil (email disabled) if AWS
-// is unavailable. It never exits, so the server can boot without AWS
-// credentials (e.g. local dev). With email disabled, registration returns 503.
-func configureMailer(ctx context.Context, db *data.Database, baseURL string) mail.Mailer {
-	awsCfg, err := awsConfig.LoadDefaultConfig(ctx)
+// configureGoogle returns the Google sign-in provider, or nil (Google sign-in disabled) if
+// credentials are missing or Google's discovery document can't be fetched, so the server can boot
+// without credentials (e.g. local dev). With it disabled, sign-in redirects back to the sign-in
+// page with an error. In production it exits instead, and systemd restarts it until Google is
+// reachable, rather than serving a site nobody can sign in to.
+func configureGoogle(ctx context.Context, cfg config) *auth.Provider {
+	disabled := func(msg string, args ...any) *auth.Provider {
+		if cfg.env == "production" {
+			slog.ErrorContext(ctx, msg, args...)
+			os.Exit(1)
+		}
+		slog.WarnContext(ctx, msg+"; Google sign-in disabled", args...)
+		return nil
+	}
+	if cfg.googleClientID == "" || cfg.googleClientSecret == "" {
+		return disabled("GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET unset")
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	redirectURL := strings.TrimSuffix(cfg.baseURL, "/") + "/api/v1/auth/google/callback"
+	google, err := auth.NewProvider(
+		ctx, "google", auth.GoogleIssuer, cfg.googleClientID, cfg.googleClientSecret, redirectURL,
+	)
 	if err != nil {
-		slog.WarnContext(ctx, "AWS config unavailable; email sending disabled", "err", err)
-		return nil
+		return disabled("Google discovery failed", "err", err)
 	}
-
-	mailer := mail.NewSESMailer(awsCfg, db, baseURL)
-	if err := mailer.Ping(ctx); err != nil {
-		slog.WarnContext(ctx, "SES unreachable; email sending disabled", "err", err)
-		return nil
-	}
-
-	return mailer
+	return google
 }
 
 func configureDB(cfg config) *data.Database {
@@ -189,7 +208,7 @@ func envInt(key string, def int) int {
 	return n
 }
 
-// validateBaseURL checks that the base URL is absolute, so email links resolve.
+// validateBaseURL checks that the base URL is absolute, so OAuth redirect URLs resolve.
 func validateBaseURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil {

@@ -20,8 +20,9 @@ Full-stack baduk (Go) app. Go 1.26 backend with chi + pgx + embedded Goose migra
   make run        # go run .
   ```
   Server listens on `:4000`.
-- **AWS SES is optional at startup**. `main.go` loads AWS config and pings SES; on failure it logs a warning and passes a nil mailer, so registration returns 503 and `/api/v1/health` reports `ses: unavailable`. Handlers must nil-check `api.mailer`. In tests, use the `mockMailer` pattern from `cmd/api/users_test.go`, or pass `nil` to test email-disabled behaviour.
-- **Configuration**: flags default to env vars (`PORT`, `ENV`, `LOG_FMT`, `POSTGRES_URL`, `BASE_URL`, `TRUSTED_ORIGINS`). `BASE_URL` is the frontend's public URL, used for email links.
+- **Sign-in is Google only (OIDC); there are no passwords or email sending.** `internal/auth` wraps `coreos/go-oidc` (authorization code + PKCE). `users` is the account; `identities` links `(provider, subject)` to it. Look users up by `(provider, subject)`, never by email alone. The session stores the user's ID (`userIDSessionKey`).
+- **Google is optional at startup**. `main.go` builds the provider from `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`; if they're unset or discovery fails it logs a warning and passes nil (with `ENV=production` it exits instead), so `/api/v1/auth/google/*` redirect to `/signin?error=unavailable` and `/api/v1/health` reports `google: unavailable`. Handlers must nil-check `api.google`. In tests, use the fake provider in `internal/auth/authtest` (see `cmd/api/auth_test.go`), or pass `nil`.
+- **Configuration**: flags default to env vars (`PORT`, `ENV`, `LOG_FMT`, `POSTGRES_URL`, `BASE_URL`, `TRUSTED_ORIGINS`, `GOOGLE_CLIENT_ID`; `GOOGLE_CLIENT_SECRET` is env-only). `BASE_URL` is the site's public URL; Google redirects back to `BASE_URL/api/v1/auth/google/callback`, so use `http://localhost:5173` locally.
 - **Migrations**: SQL files are `//go:embed`-ed. You can also run them in-process with `./baduk.online -migrate`. Goose CLI is used by `make db/migrate`.
 - **Go version**: `go.mod` specifies `1.26.2`. CI workflows use `1.26.2`.
 
@@ -40,7 +41,7 @@ Full-stack baduk (Go) app. Go 1.26 backend with chi + pgx + embedded Goose migra
   make tests/setup        # systemctl --user start podman.socket
   make tests/integration  # sets DOCKER_HOST and TESTCONTAINERS_RYUK_DISABLED
   ```
-  Integration tests live in `cmd/api/*_test.go` and spin up `postgres:17.5` containers via testcontainers-go.
+  Integration tests live in `cmd/api/*_test.go` and spin up `postgres:17.5` containers via testcontainers-go. With Docker or OrbStack instead of Podman, set `DOCKER_HOST` to its socket (OrbStack: `unix://$HOME/.orbstack/run/docker.sock`) and run `go test ./...`.
 
 ## Lint & typecheck
 
