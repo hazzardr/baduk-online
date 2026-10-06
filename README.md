@@ -8,9 +8,9 @@ A full-stack web application for baduk (Go/Weiqi) online play. Built with Go RES
 
 ### MVP Scope
 
-The current milestone is playing an online-go.com (OGS) game from baduk.online ([MVP epic #20](https://github.com/hazzardr/baduk-online/issues/20), [milestone #4](https://github.com/hazzardr/baduk-online/milestone/4)): sign in with Google, connect an OGS account, open an active OGS game, and play it to completion. baduk.online does not run its own game server. Games are played on third-party servers through a provider interface (OGS first), and clients talk only to baduk.online's relay so a physical board can use the same protocol later.
+The current milestone is playing an online-go.com (OGS) game from baduk.online ([MVP epic #20](https://github.com/hazzardr/baduk-online/issues/20), [milestone #4](https://github.com/hazzardr/baduk-online/milestone/4)): sign in with Google or OGS, connect an OGS account, open an active OGS game, and play it to completion. baduk.online does not run its own game server. Games are played on third-party servers through a provider interface (OGS first), and clients talk only to baduk.online's relay so a physical board can use the same protocol later.
 
-Non-goals for MVP: physical board hardware, providers other than OGS, sign-in providers other than Google, creating challenges from baduk.online, our own rules engine or matchmaking, puzzles (tsumego), chat.
+Non-goals for MVP: physical board hardware, providers other than OGS (Tygem and Fox are being researched in #46 and #47), sign-in providers other than Google and OGS, creating challenges from baduk.online, our own rules engine or matchmaking, puzzles (tsumego), chat.
 
 ### Planning
 
