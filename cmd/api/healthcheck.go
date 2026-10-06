@@ -48,13 +48,12 @@ func (api *API) checkHealth(ctx context.Context) map[string]string {
 		statuses["db"] = "OK"
 	}
 
-	if api.mailer == nil {
-		statuses["ses"] = "unavailable"
-	} else if err := api.mailer.Ping(ctx); err != nil {
-		slog.ErrorContext(ctx, "mail server conn failed", "err", err)
-		statuses["ses"] = "DOWN"
+	// Google's discovery document is fetched once at startup; nil means it failed or no
+	// credentials were configured.
+	if api.google == nil {
+		statuses["google"] = "unavailable"
 	} else {
-		statuses["ses"] = "OK"
+		statuses["google"] = "OK"
 	}
 
 	// Update cache

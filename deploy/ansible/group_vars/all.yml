@@ -3,7 +3,7 @@ ansible_python_interpreter: /usr/bin/python3
 
 # Backend
 baduk_port: 4000
-# Public URL of the frontend; used for links in emails (BASE_URL)
+# Public URL of the site; OAuth redirect URLs are built from it (BASE_URL)
 baduk_base_url: https://play.baduk.online
 
 # Database
@@ -16,8 +16,8 @@ postgres_connection_string: "postgres://{{ postgres_user }}:{{ postgres_password
 # vault_ghcr_username: GitHub username
 # vault_ghcr_token: GitHub Personal Access Token with read:packages scope
 
-# AWS
-aws_region: "{{ vault_aws_region }}"
-aws_access_key_id: "{{ vault_aws_access_key }}"
-aws_secret_access_key: "{{ vault_aws_secret }}"
+# Google sign-in (OAuth client of type "Web application"). Its authorized redirect URI must be
+# {{ baduk_base_url }}/api/v1/auth/google/callback.
+google_client_id: "{{ vault_google_client_id }}"
+google_client_secret: "{{ vault_google_client_secret }}"
 

@@ -2,6 +2,13 @@ package api
 
 type contextKey string
 
-// userContextKey is used as a key for getting and setting user information in the request
-// context.
-const userContextKey = contextKey("userEmail")
+// Session keys.
+const (
+	// userIDSessionKey holds the signed-in user's ID.
+	userIDSessionKey = contextKey("userID")
+
+	// Single-use values for an OAuth sign-in in progress.
+	oauthStateSessionKey    = contextKey("oauthState")
+	oauthNonceSessionKey    = contextKey("oauthNonce")
+	oauthVerifierSessionKey = contextKey("oauthVerifier")
+)

@@ -9,9 +9,9 @@ import (
 
 // Database provides access to the database connection pool and data stores.
 type Database struct {
-	Pool         *pgxpool.Pool
-	Users        *userStore
-	Registration *registrationStore
+	Pool       *pgxpool.Pool
+	Users      *userStore
+	Identities *identityStore
 }
 
 // userStore handles database operations for users.
@@ -34,7 +34,7 @@ func New(dsn string) (*Database, error) {
 	return &Database{
 		pool,
 		&userStore{db: pool},
-		&registrationStore{db: pool},
+		&identityStore{db: pool},
 	}, nil
 }
 

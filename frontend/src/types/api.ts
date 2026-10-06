@@ -2,14 +2,7 @@
 export interface User {
   name: string;
   email: string;
-  validated: boolean;
-}
-
-// LoginResponse is returned on successful login
-export interface LoginResponse {
-  name: string;
-  email: string;
-  validated: boolean;
+  created_at: string;
 }
 
 // LogoutResponse is returned on successful logout
