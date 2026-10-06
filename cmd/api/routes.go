@@ -27,10 +27,10 @@ func (api *API) Routes() http.Handler {
 
 		r.Get("/health", api.handleHealthCheck)
 
-		// Sign-in is a browser redirect flow: start sends the browser to Google, and Google
-		// sends it back to callback.
-		r.With(api.rateLimitMiddleware(signInRateLimiter)).Get("/auth/google/start", api.handleGoogleStart)
-		r.Get("/auth/google/callback", api.handleGoogleCallback)
+		// Sign-in is a browser redirect flow: start sends the browser to the provider (google,
+		// ogs), and the provider sends it back to callback.
+		r.With(api.rateLimitMiddleware(signInRateLimiter)).Get("/auth/{provider}/start", api.handleSignInStart)
+		r.Get("/auth/{provider}/callback", api.handleSignInCallback)
 		r.Post("/logout", api.handleLogout)
 
 		r.Get("/user", api.handleGetLoggedInUser)

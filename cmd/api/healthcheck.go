@@ -48,12 +48,14 @@ func (api *API) checkHealth(ctx context.Context) map[string]string {
 		statuses["db"] = "OK"
 	}
 
-	// Google's discovery document is fetched once at startup; nil means it failed or no
-	// credentials were configured.
-	if api.google == nil {
-		statuses["google"] = "unavailable"
-	} else {
-		statuses["google"] = "OK"
+	// Sign-in providers are set up once at startup; a missing one had no credentials or was
+	// unreachable.
+	for _, name := range signInProviders {
+		if _, ok := api.providers[name]; ok {
+			statuses[name] = "OK"
+		} else {
+			statuses[name] = "unavailable"
+		}
 	}
 
 	// Update cache

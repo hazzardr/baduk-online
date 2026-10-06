@@ -8,6 +8,7 @@ const (
 	userIDSessionKey = contextKey("userID")
 
 	// Single-use values for an OAuth sign-in in progress.
+	oauthProviderSessionKey = contextKey("oauthProvider")
 	oauthStateSessionKey    = contextKey("oauthState")
 	oauthNonceSessionKey    = contextKey("oauthNonce")
 	oauthVerifierSessionKey = contextKey("oauthVerifier")

@@ -7,12 +7,18 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/hazzardr/baduk-online/internal/auth"
 	"github.com/hazzardr/baduk-online/internal/data"
 	"golang.org/x/oauth2"
 )
+
+// signInProviders are the providers people can sign in with. A provider that isn't configured
+// (no credentials, or unreachable at startup) is reported as unavailable rather than unknown.
+var signInProviders = []string{auth.Google, auth.OGS}
 
 // Sign-in errors, passed to the sign-in page as /signin?error=<code>.
 const (
@@ -24,11 +30,27 @@ const (
 	signInEmailInUse      = "email_in_use"
 )
 
-// handleGoogleStart stores single-use state, nonce and PKCE values in the session and sends the
-// browser to Google to sign in.
-func (api *API) handleGoogleStart(w http.ResponseWriter, r *http.Request) {
-	if api.google == nil {
+// signInProvider returns the configured provider named in the URL. Otherwise it responds,
+// redirecting to the sign-in page for a known provider and 404 for an unknown one, and
+// returns false.
+func (api *API) signInProvider(w http.ResponseWriter, r *http.Request) (auth.Provider, bool) {
+	name := chi.URLParam(r, "provider")
+	if p, ok := api.providers[name]; ok {
+		return p, true
+	}
+	if slices.Contains(signInProviders, name) {
 		redirectToSignIn(w, r, signInUnavailable)
+	} else {
+		http.NotFound(w, r)
+	}
+	return nil, false
+}
+
+// handleSignInStart stores single-use state, nonce and PKCE values in the session and sends
+// the browser to the provider to sign in.
+func (api *API) handleSignInStart(w http.ResponseWriter, r *http.Request) {
+	provider, ok := api.signInProvider(w, r)
+	if !ok {
 		return
 	}
 	ctx := r.Context()
@@ -38,69 +60,74 @@ func (api *API) handleGoogleStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	state, nonce, verifier := rand.Text(), rand.Text(), oauth2.GenerateVerifier()
+	api.sessionManager.Put(ctx, string(oauthProviderSessionKey), provider.Name())
 	api.sessionManager.Put(ctx, string(oauthStateSessionKey), state)
 	api.sessionManager.Put(ctx, string(oauthNonceSessionKey), nonce)
 	api.sessionManager.Put(ctx, string(oauthVerifierSessionKey), verifier)
-	http.Redirect(w, r, api.google.AuthCodeURL(state, nonce, verifier), http.StatusFound)
+	http.Redirect(w, r, provider.AuthCodeURL(state, nonce, verifier), http.StatusFound)
 }
 
-// handleGoogleCallback completes a Google sign-in: it checks the state, exchanges the code,
-// finds or creates the user for the Google identity, and starts a session.
-func (api *API) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	if api.google == nil {
-		redirectToSignIn(w, r, signInUnavailable)
+// handleSignInCallback completes a sign-in: it checks the state, exchanges the code, finds or
+// creates the user for the identity, and starts a session.
+func (api *API) handleSignInCallback(w http.ResponseWriter, r *http.Request) {
+	provider, ok := api.signInProvider(w, r)
+	if !ok {
 		return
 	}
 	ctx := r.Context()
 	// Pop, so each sign-in attempt can complete at most once.
+	startedWith := api.sessionManager.PopString(ctx, string(oauthProviderSessionKey))
 	state := api.sessionManager.PopString(ctx, string(oauthStateSessionKey))
 	nonce := api.sessionManager.PopString(ctx, string(oauthNonceSessionKey))
 	verifier := api.sessionManager.PopString(ctx, string(oauthVerifierSessionKey))
+	log := slog.With("provider", provider.Name())
 
 	q := r.URL.Query()
 	if reason := q.Get("error"); reason != "" {
-		slog.InfoContext(ctx, "google sign-in not completed", "error", reason)
+		log.InfoContext(ctx, "sign-in not completed", "error", reason)
 		redirectToSignIn(w, r, signInCancelled)
 		return
 	}
-	if state == "" || subtle.ConstantTimeCompare([]byte(q.Get("state")), []byte(state)) != 1 {
-		slog.WarnContext(ctx, "google sign-in state mismatch", "ip", r.RemoteAddr)
+	if state == "" || startedWith != provider.Name() ||
+		subtle.ConstantTimeCompare([]byte(q.Get("state")), []byte(state)) != 1 {
+		log.WarnContext(ctx, "sign-in state mismatch", "ip", r.RemoteAddr)
 		redirectToSignIn(w, r, signInExpired)
 		return
 	}
 
-	claims, err := api.google.Exchange(ctx, q.Get("code"), verifier, nonce)
+	claims, err := provider.Exchange(ctx, q.Get("code"), verifier, nonce)
 	if err != nil {
-		slog.ErrorContext(ctx, "google sign-in failed", "err", err)
+		log.ErrorContext(ctx, "sign-in failed", "err", err)
 		redirectToSignIn(w, r, signInFailed)
 		return
 	}
-	if !claims.EmailVerified || claims.Email == "" {
-		slog.WarnContext(ctx, "google sign-in rejected: email not verified", "subject", claims.Subject)
+	// Email is optional, but one the provider hasn't verified can't be trusted.
+	if claims.Email != "" && !claims.EmailVerified {
+		log.WarnContext(ctx, "sign-in rejected: email not verified", "subject", claims.Subject)
 		redirectToSignIn(w, r, signInEmailUnverified)
 		return
 	}
 
-	user, err := api.userForIdentity(ctx, api.google.Name, claims)
+	user, err := api.userForIdentity(ctx, provider.Name(), claims)
 	if err != nil {
 		if errors.Is(err, data.ErrDuplicateEmail) {
-			slog.WarnContext(ctx, "google sign-in rejected: email belongs to another user", "subject", claims.Subject)
+			log.WarnContext(ctx, "sign-in rejected: email belongs to another user", "subject", claims.Subject)
 			redirectToSignIn(w, r, signInEmailInUse)
 			return
 		}
-		slog.ErrorContext(ctx, "google sign-in failed", "err", err)
+		log.ErrorContext(ctx, "sign-in failed", "err", err)
 		redirectToSignIn(w, r, signInFailed)
 		return
 	}
 
 	// A new session token on sign-in prevents session fixation.
 	if err := api.sessionManager.RenewToken(ctx); err != nil {
-		slog.ErrorContext(ctx, "renewing session token failed", "err", err)
+		log.ErrorContext(ctx, "renewing session token failed", "err", err)
 		redirectToSignIn(w, r, signInFailed)
 		return
 	}
 	api.sessionManager.Put(ctx, string(userIDSessionKey), user.ID)
-	slog.InfoContext(ctx, "user signed in", "user_id", user.ID, "provider", api.google.Name, "ip", r.RemoteAddr)
+	log.InfoContext(ctx, "user signed in", "user_id", user.ID, "ip", r.RemoteAddr)
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
@@ -122,7 +149,10 @@ func (api *API) userForIdentity(ctx context.Context, provider string, claims *au
 		return nil, err
 	}
 
-	user = &data.User{Name: displayName(claims), Email: claims.Email}
+	user = &data.User{Name: displayName(claims)}
+	if claims.Email != "" {
+		user.Email = &claims.Email
+	}
 	err = api.db.Identities.CreateUser(ctx, user, identity)
 	if errors.Is(err, data.ErrDuplicateIdentity) {
 		// A concurrent callback for the same identity created the user first.
@@ -140,8 +170,10 @@ func displayName(claims *auth.Claims) string {
 	if name := strings.TrimSpace(claims.Name); name != "" {
 		return name
 	}
-	local, _, _ := strings.Cut(claims.Email, "@")
-	return local
+	if local, _, _ := strings.Cut(claims.Email, "@"); local != "" {
+		return local
+	}
+	return "Player"
 }
 
 func redirectToSignIn(w http.ResponseWriter, r *http.Request, code string) {
