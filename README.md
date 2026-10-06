@@ -8,13 +8,13 @@ A full-stack web application for baduk (Go/Weiqi) online play. Built with Go RES
 
 ### MVP Scope
 
-The current milestone is the baduk.online game itself ([MVP epic #20](https://github.com/hazzardr/baduk-online/issues/20), [milestone #4](https://github.com/hazzardr/baduk-online/milestone/4)). A "playable game" means: register, log in, create or join a room, place stones with legal turn rules, resign or finish, and reconnect to an active game.
+The current milestone is playing an online-go.com (OGS) game from baduk.online ([MVP epic #20](https://github.com/hazzardr/baduk-online/issues/20), [milestone #4](https://github.com/hazzardr/baduk-online/milestone/4)): sign in with Google, connect an OGS account, open an active OGS game, and play it to completion. baduk.online does not run its own game server. Games are played on third-party servers through a provider interface (OGS first), and clients talk only to baduk.online's relay so a physical board can use the same protocol later.
 
-Non-goals for MVP: online-go.com / OIDC login, physical-board registration, puzzles (tsumego), matchmaking, ratings, password reset, chat.
+Non-goals for MVP: physical board hardware, providers other than OGS, sign-in providers other than Google, creating challenges from baduk.online, our own rules engine or matchmaking, puzzles (tsumego), chat.
 
 ### Planning
 
-GitHub issues, task lists, labels, and milestones are the source of truth for tracking work. See [milestone #4 — MVP: Play a complete game](https://github.com/hazzardr/baduk-online/milestone/4).
+GitHub issues, task lists, labels, and milestones are the source of truth for tracking work. See [milestone #4 — MVP: Play an OGS game from baduk.online](https://github.com/hazzardr/baduk-online/milestone/4).
 
 ### Tech Stack
 
