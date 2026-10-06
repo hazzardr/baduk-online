@@ -1,4 +1,6 @@
-// Package authtest provides a fake OpenID Connect provider for tests.
+// Package authtest provides a fake sign-in provider for tests. It serves both an OpenID Connect
+// provider (discovery, JWKS, ID tokens) and OGS's OAuth2 endpoints and profile API, so one
+// server can stand in for Google and OGS.
 package authtest
 
 import (
@@ -12,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -24,6 +27,7 @@ const (
 
 // Identity is the user a test signs in as.
 type Identity struct {
+	// Subject is the user's ID. For OGS it must be a number.
 	Subject       string
 	Email         string
 	EmailVerified any // bool, or a string to mimic providers that quote it
@@ -39,8 +43,9 @@ type Server struct {
 	ClientID string
 	key      *rsa.PrivateKey
 
-	mu    sync.Mutex
-	codes map[string]grant
+	mu     sync.Mutex
+	codes  map[string]grant
+	tokens map[string]Identity // access token → user, for the profile endpoint
 }
 
 type grant struct {
@@ -58,12 +63,15 @@ func NewServer(t testing.TB, clientID string) *Server {
 	if err != nil {
 		t.Fatalf("generating key: %s", err)
 	}
-	s := &Server{ClientID: clientID, key: key, codes: map[string]grant{}}
+	s := &Server{ClientID: clientID, key: key, codes: map[string]grant{}, tokens: map[string]Identity{}}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /.well-known/openid-configuration", s.handleDiscovery)
 	mux.HandleFunc("GET /jwks", s.handleJWKS)
 	mux.HandleFunc("POST /token", s.handleToken)
+	// OGS's paths.
+	mux.HandleFunc("POST /oauth2/token/", s.handleToken)
+	mux.HandleFunc("GET /api/v1/me/", s.handleOGSMe)
 	s.Server = httptest.NewServer(mux)
 	t.Cleanup(s.Close)
 	return s
@@ -183,11 +191,32 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	accessToken := rand.Text()
+	s.mu.Lock()
+	s.tokens[accessToken] = g.identity
+	s.mu.Unlock()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"access_token": rand.Text(),
+		"access_token": accessToken,
 		"token_type":   "Bearer",
 		"expires_in":   3600,
 		"id_token":     idToken,
+	})
+}
+
+// handleOGSMe mimics OGS's GET /api/v1/me/ for the user the bearer token was issued to.
+func (s *Server) handleOGSMe(w http.ResponseWriter, r *http.Request) {
+	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	s.mu.Lock()
+	identity, found := s.tokens[token]
+	s.mu.Unlock()
+	if !ok || !found {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"detail": "Invalid token."})
+		return
+	}
+	// OGS sends the ID as a JSON number.
+	writeJSON(w, http.StatusOK, map[string]any{
+		"id":       json.Number(identity.Subject),
+		"username": identity.Name,
 	})
 }
 

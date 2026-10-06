@@ -16,7 +16,7 @@ type API struct {
 	environment    string
 	version        string
 	db             *data.Database
-	google         *auth.Provider
+	providers      map[string]auth.Provider // configured sign-in providers, by name
 	sessionManager *scs.SessionManager
 	trustedOrigins []string
 	frontend       fs.FS
@@ -28,12 +28,13 @@ type API struct {
 	healthCachedAt time.Time
 }
 
-// New creates the API. google is the Google sign-in provider, or nil if Google sign-in is
-// unavailable. frontend is the static site to serve outside /api, or nil to serve only the API.
+// New creates the API. providers are the sign-in providers that are configured; any of
+// signInProviders that's missing is reported as unavailable. frontend is the static site to
+// serve outside /api, or nil to serve only the API.
 func New(
 	environment, version string,
 	db *data.Database,
-	google *auth.Provider,
+	providers []auth.Provider,
 	trustedOrigins []string,
 	frontend fs.FS,
 ) *API {
@@ -44,11 +45,15 @@ func New(
 	sm.Cookie.Secure = environment == "production"
 	sm.Cookie.SameSite = http.SameSiteLaxMode
 	sm.Store = pgxstore.New(db.Pool)
+	byName := make(map[string]auth.Provider, len(providers))
+	for _, p := range providers {
+		byName[p.Name()] = p
+	}
 	return &API{
 		environment:    environment,
 		version:        version,
 		db:             db,
-		google:         google,
+		providers:      byName,
 		sessionManager: sm,
 		trustedOrigins: trustedOrigins,
 		frontend:       frontend,

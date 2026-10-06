@@ -4,7 +4,7 @@ A full-stack web application for baduk (Go/Weiqi) online play. Built with Go RES
 
 ## Overview
 
-**baduk.online** lets you sign in with Google and play your online baduk games.
+**baduk.online** lets you sign in with Google or your online-go.com (OGS) account and play your online baduk games.
 
 ### MVP Scope
 
@@ -21,7 +21,7 @@ GitHub issues, task lists, labels, and milestones are the source of truth for tr
 **Backend:**
 - Go 1.26 with chi HTTP router
 - PostgreSQL with pgx driver
-- Google sign-in (OpenID Connect) with coreos/go-oidc
+- Sign-in with Google (OpenID Connect, coreos/go-oidc) or OGS (OAuth2)
 - Session management with alexedwards/scs
 - Rate limiting and CSRF protection
 
@@ -39,7 +39,7 @@ GitHub issues, task lists, labels, and milestones are the source of truth for tr
 - PostgreSQL 17.5+
 - pnpm 9.15.4+
 - Podman (for local testing)
-- A Google OAuth client (optional locally — without one the server starts with Google sign-in disabled). See [Environment Variables](#environment-variables).
+- A Google OAuth client and/or an OGS OAuth application (optional locally — without credentials the server starts with that sign-in option disabled). See [Environment Variables](#environment-variables).
 
 ### Quick Start
 
@@ -111,7 +111,7 @@ make db/migration/status  # Check migration status
 
 ```
 cmd/api/               # HTTP handlers, routes, middleware, API struct
-internal/auth/         # OpenID Connect sign-in (Google); authtest/ is a fake provider for tests
+internal/auth/         # Sign-in providers: OpenID Connect (Google), OAuth2 (OGS); authtest/ is a fake provider for tests
 internal/data/         # Database models, queries, stores
 migrations/            # Goose SQL migrations
 frontend/              # Astro.js frontend
@@ -154,7 +154,7 @@ deploy/                # Ansible & Terraform configs
 
 **Authentication Flow**:
 - Pages are static; the browser resolves auth state with `GET /api/v1/user` (`getCurrentUser()` in `src/lib/api.ts`)
-- "Sign in with Google" is a full-page link to `/api/v1/auth/google/start`; the backend handles the redirects and sends the browser back to `/` (or `/signin?error=<code>`)
+- "Sign in with Google" and "Sign in with OGS" are full-page links to `/api/v1/auth/{google,ogs}/start`; the backend handles the redirects and sends the browser back to `/` (or `/signin?error=<code>`)
 
 ## API Endpoints
 
@@ -162,24 +162,25 @@ All endpoints are under `/api/v1`:
 
 ### Authentication
 
-- `GET /auth/google/start` - Browser navigation: redirects to Google to sign in
+- `GET /auth/{provider}/start` - Browser navigation: redirects to the provider (`google` or `ogs`) to sign in
   - Rate limit: 20 attempts/hour per IP
   - Redirects to `/` if already signed in
-- `GET /auth/google/callback` - Google redirects here after sign-in
+- `GET /auth/{provider}/callback` - The provider redirects here after sign-in
   - On success: creates the user on first sign-in, sets the session cookie (24-hour lifetime), and redirects to `/`
   - On failure: redirects to `/signin?error=<code>` (`unavailable`, `cancelled`, `expired`, `failed`, `email_unverified`, `email_in_use`)
+  - Unknown providers are 404
 
 - `POST /logout` - Destroy user session
   - Returns: success message
 
 - `GET /user` - Get signed-in user info
   - Requires: valid session (401 otherwise)
-  - Returns: `name`, `email`, `created_at`
+  - Returns: `name`, `email` (`null` for users who signed in with OGS, which doesn't share email), `created_at`
 
 ### Health
 
 - `GET /health` - Health check
-  - Returns: `status` (`db`, `google`), `env`, `version`
+  - Returns: `status` (`db`, `google`, `ogs`), `env`, `version`
 
 ## Authentication
 
@@ -193,10 +194,10 @@ All endpoints are under `/api/v1`:
 
 ### Sign-in
 
-- **Providers**: Google (OpenID Connect). baduk.online's `users` row is the account; sign-in identities in `identities` link to it by `(provider, subject)`, so more providers can be added later.
-- **Flow**: authorization code with PKCE. `state`, `nonce` and the PKCE verifier are single-use values kept in the session.
+- **Providers**: Google (OpenID Connect) and OGS (OAuth2; the identity comes from `/api/v1/me/`). baduk.online's `users` row is the account; sign-in identities in `identities` link to it by `(provider, subject)`, so more providers can be added later.
+- **Flow**: authorization code with PKCE. The provider, `state`, `nonce` and the PKCE verifier are single-use values kept in the session.
 - **Lookup**: users are found by `(provider, subject)`, never by email. The first sign-in creates the user.
-- **Email**: sign-in is rejected unless Google reports the email as verified. If another user already has the email, sign-in is rejected (`email_in_use`).
+- **Email**: optional (OGS doesn't share one). When a provider shares an email, sign-in is rejected unless the provider reports it verified, or if another user already has it (`email_in_use`).
 
 ## Environment Variables
 
@@ -207,17 +208,18 @@ All endpoints are under `/api/v1`:
 - `PORT` - API server port (default: 4000)
 - `ENV` - Environment name: `development`, `production` (default: development). `production` marks session cookies `Secure`.
 - `LOG_FMT` - Log format: `text`, `json` (default: text)
-- `BASE_URL` - Public URL of the site (default: `https://play.baduk.online`). Google redirects back to `BASE_URL/api/v1/auth/google/callback`, so set it to `http://localhost:5173` for local dev. Must be an absolute `http(s)` URL or the server exits.
+- `BASE_URL` - Public URL of the site (default: `https://play.baduk.online`). Providers redirect back to `BASE_URL/api/v1/auth/{google,ogs}/callback`, so set it to `http://localhost:5173` for local dev. Must be an absolute `http(s)` URL or the server exits.
 - `TRUSTED_ORIGINS` - Comma-separated origins trusted for CSRF protection (default: `https://play.baduk.online` plus localhost dev ports)
 
-Each variable can also be set with the matching flag (`-port`, `-env`, `-logFmt`, `-base-url`, `-trusted-origins`, `-dsn`, `-google-client-id`); a flag overrides the environment.
+Each variable can also be set with the matching flag (`-port`, `-env`, `-logFmt`, `-base-url`, `-trusted-origins`, `-dsn`, `-google-client-id`, `-ogs-client-id`); a flag overrides the environment.
 
-**Google sign-in:**
-- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` - an OAuth client of type "Web application" whose authorized redirect URIs include `BASE_URL/api/v1/auth/google/callback` (setup steps: `deploy/README.md`). The secret is read only from the environment, never a flag.
-- At startup the server fetches Google's discovery document. If the credentials are unset or that fails, it logs a warning and starts with **Google sign-in disabled**:
-  - `/api/v1/auth/google/*` redirect to `/signin?error=unavailable`
-  - `GET /api/v1/health` reports `"google": "unavailable"`
-- With `ENV=production` the server exits instead, and systemd restarts it until Google is reachable.
+**Sign-in providers** (setup steps: `deploy/README.md`; secrets are read only from the environment, never a flag):
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` - an OAuth client of type "Web application" whose authorized redirect URIs include `BASE_URL/api/v1/auth/google/callback`
+- `OGS_CLIENT_ID` and `OGS_CLIENT_SECRET` - an online-go.com OAuth application (confidential, authorization code) whose redirect URIs include `BASE_URL/api/v1/auth/ogs/callback`
+- At startup the server fetches Google's discovery document. If a provider's credentials are unset, or Google's discovery fails, it logs a warning and starts with **that provider disabled**:
+  - `/api/v1/auth/<provider>/*` redirect to `/signin?error=unavailable`
+  - `GET /api/v1/health` reports `"<provider>": "unavailable"`
+- With `ENV=production` the server exits instead, and systemd restarts it until every provider works.
 
 **Frontend:**
 - The frontend is a static Astro build. The browser always calls the API at the relative path `/api/v1`, so the frontend and API share an origin:
@@ -238,7 +240,7 @@ make test         # Run all tests
 ```
 
 Tests are located in `cmd/api/*_test.go` and cover:
-- Google sign-in against a fake OpenID Connect provider (`internal/auth/authtest`)
+- Google and OGS sign-in against a fake provider (`internal/auth/authtest`)
 - Session management
 - Frontend routing
 
@@ -256,6 +258,7 @@ Migrations use Goose and are located in `migrations/`:
 2. `002_sessions.sql` - Session storage (scs)
 3. `003_registration.sql` - Registration tokens (dropped by 004)
 4. `004_identities.sql` - Sign-in identities; removes passwords and existing password accounts
+5. `005_optional_email.sql` - Makes `users.email` and `identities.email` optional
 
 ### Running Migrations
 
@@ -269,14 +272,14 @@ make db/migrate
 **users** table:
 - `id` (bigserial primary key)
 - `name` (text)
-- `email` (text, unique, citext)
+- `email` (citext, unique when present; null if no provider shared one)
 - `created_at` (timestamp)
 - `version` (integer, for optimistic locking)
 
 **identities** table:
 - `provider`, `subject` (text, primary key together)
 - `user_id` (references `users`)
-- `email` (citext, as last reported by the provider), `email_verified` (boolean)
+- `email` (citext, as last reported by the provider; null if it shares none), `email_verified` (boolean)
 - `created_at` (timestamp)
 
 **sessions** table:

@@ -36,8 +36,10 @@ type config struct {
 	trustedOrigins string
 	baseURL        string
 	googleClientID string
-	// googleClientSecret is read from GOOGLE_CLIENT_SECRET only, so it never appears in -help output.
+	// Client secrets are read from the environment only, so they never appear in -help output.
 	googleClientSecret string
+	ogsClientID        string
+	ogsClientSecret    string
 }
 
 func main() {
@@ -72,6 +74,13 @@ func main() {
 		"Google OAuth client ID; Google sign-in is disabled without it (env GOOGLE_CLIENT_ID)",
 	)
 	cfg.googleClientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
+	flag.StringVar(
+		&cfg.ogsClientID,
+		"ogs-client-id",
+		os.Getenv("OGS_CLIENT_ID"),
+		"online-go.com OAuth client ID; OGS sign-in is disabled without it (env OGS_CLIENT_ID)",
+	)
+	cfg.ogsClientSecret = os.Getenv("OGS_CLIENT_SECRET")
 
 	flag.Parse()
 
@@ -87,7 +96,7 @@ func main() {
 	ctx := context.Background()
 	configureLogger(cfg)
 	db := configureDB(cfg)
-	google := configureGoogle(ctx, cfg)
+	providers := configureSignIn(ctx, cfg)
 
 	frontend := frontendFS()
 	if frontend == nil {
@@ -99,7 +108,7 @@ func main() {
 	}
 
 	trustedOrigins := parseTrustedOrigins(cfg.trustedOrigins)
-	apiInstance := api.New(cfg.env, version, db, google, trustedOrigins, frontend)
+	apiInstance := api.New(cfg.env, version, db, providers, trustedOrigins, frontend)
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
 		Handler:      apiInstance.Routes(),
@@ -135,33 +144,49 @@ func main() {
 	os.Exit(0)
 }
 
-// configureGoogle returns the Google sign-in provider, or nil (Google sign-in disabled) if
-// credentials are missing or Google's discovery document can't be fetched, so the server can boot
-// without credentials (e.g. local dev). With it disabled, sign-in redirects back to the sign-in
-// page with an error. In production it exits instead, and systemd restarts it until Google is
-// reachable, rather than serving a site nobody can sign in to.
-func configureGoogle(ctx context.Context, cfg config) *auth.Provider {
-	disabled := func(msg string, args ...any) *auth.Provider {
+// configureSignIn returns the sign-in providers that have credentials and, for Google, a
+// reachable discovery document. A provider that doesn't is left out (its sign-in redirects back
+// to the sign-in page with an error), so the server can boot without credentials, e.g. in local
+// dev. In production it exits instead, and systemd restarts it until every provider works,
+// rather than serving a site some people can't sign in to.
+func configureSignIn(ctx context.Context, cfg config) []auth.Provider {
+	var providers []auth.Provider
+	ok := func(name string, err error) bool {
+		if err == nil {
+			return true
+		}
 		if cfg.env == "production" {
-			slog.ErrorContext(ctx, msg, args...)
+			slog.ErrorContext(ctx, "sign-in provider unavailable", "provider", name, "err", err)
 			os.Exit(1)
 		}
-		slog.WarnContext(ctx, msg+"; Google sign-in disabled", args...)
-		return nil
+		slog.WarnContext(ctx, "sign-in provider disabled", "provider", name, "err", err)
+		return false
 	}
+	callback := func(provider string) string {
+		return strings.TrimSuffix(cfg.baseURL, "/") + "/api/v1/auth/" + provider + "/callback"
+	}
+
+	if google, err := configureGoogle(ctx, cfg, callback(auth.Google)); ok(auth.Google, err) {
+		providers = append(providers, google)
+	}
+	if cfg.ogsClientID == "" || cfg.ogsClientSecret == "" {
+		ok(auth.OGS, errors.New("OGS_CLIENT_ID or OGS_CLIENT_SECRET unset"))
+	} else {
+		providers = append(providers,
+			auth.NewOGSProvider(auth.OGSURL, cfg.ogsClientID, cfg.ogsClientSecret, callback(auth.OGS)))
+	}
+	return providers
+}
+
+func configureGoogle(ctx context.Context, cfg config, redirectURL string) (*auth.OIDCProvider, error) {
 	if cfg.googleClientID == "" || cfg.googleClientSecret == "" {
-		return disabled("GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET unset")
+		return nil, errors.New("GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET unset")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	redirectURL := strings.TrimSuffix(cfg.baseURL, "/") + "/api/v1/auth/google/callback"
-	google, err := auth.NewProvider(
-		ctx, "google", auth.GoogleIssuer, cfg.googleClientID, cfg.googleClientSecret, redirectURL,
+	return auth.NewOIDCProvider(
+		ctx, auth.Google, auth.GoogleIssuer, cfg.googleClientID, cfg.googleClientSecret, redirectURL,
 	)
-	if err != nil {
-		return disabled("Google discovery failed", "err", err)
-	}
-	return google
 }
 
 func configureDB(cfg config) *data.Database {

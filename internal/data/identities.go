@@ -14,8 +14,9 @@ import (
 
 // Identity is a sign-in identity at an external provider, such as a Google account.
 type Identity struct {
-	Provider      string
-	Subject       string
+	Provider string
+	Subject  string
+	// Email is empty when the provider doesn't share one; it's stored as NULL.
 	Email         string
 	EmailVerified bool
 }
@@ -57,7 +58,7 @@ func (s *identityStore) GetUser(ctx context.Context, provider, subject string) (
 func (s *identityStore) UpdateEmail(ctx context.Context, identity *Identity) error {
 	query := `
 		UPDATE identities
-		SET email = $3, email_verified = $4
+		SET email = NULLIF($3, ''), email_verified = $4
 		WHERE provider = $1 AND subject = $2
 	`
 	c, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -94,7 +95,7 @@ func (s *identityStore) CreateUser(ctx context.Context, user *User, identity *Id
 
 	_, err = tx.Exec(c, `
 		INSERT INTO identities (provider, subject, user_id, email, email_verified)
-		VALUES ($1, $2, $3, $4, $5)`,
+		VALUES ($1, $2, $3, NULLIF($4, ''), $5)`,
 		identity.Provider, identity.Subject, user.ID, identity.Email, identity.EmailVerified,
 	)
 	if err != nil {

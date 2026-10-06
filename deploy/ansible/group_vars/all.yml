@@ -20,4 +20,8 @@ postgres_connection_string: "postgres://{{ postgres_user }}:{{ postgres_password
 # {{ baduk_base_url }}/api/v1/auth/google/callback.
 google_client_id: "{{ vault_google_client_id }}"
 google_client_secret: "{{ vault_google_client_secret }}"
+# OGS sign-in (online-go.com OAuth application). Its redirect URIs must include
+# {{ baduk_base_url }}/api/v1/auth/ogs/callback.
+ogs_client_id: "{{ vault_ogs_client_id }}"
+ogs_client_secret: "{{ vault_ogs_client_secret }}"
 

@@ -14,7 +14,7 @@ type User struct {
 	ID        int64     `json:"-"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	Name      string    `json:"name"`
-	Email     string    `json:"email"`
+	Email     *string   `json:"email"` // nil when no provider has shared one
 	Version   int       `json:"-"`
 }
 

@@ -12,10 +12,10 @@ import (
 
 const redirectURL = "http://app.test/callback"
 
-func newProvider(t *testing.T) (*auth.Provider, *authtest.Server) {
+func newProvider(t *testing.T) (*auth.OIDCProvider, *authtest.Server) {
 	t.Helper()
 	idp := authtest.NewServer(t, "client-id")
-	p, err := auth.NewProvider(t.Context(), "test", idp.URL, "client-id", "client-secret", redirectURL)
+	p, err := auth.NewOIDCProvider(t.Context(), "test", idp.URL, "client-id", "client-secret", redirectURL)
 	if err != nil {
 		t.Fatalf("NewProvider: %s", err)
 	}

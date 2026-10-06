@@ -1,4 +1,3 @@
-// Package auth signs users in with external OpenID Connect providers.
 package auth
 
 import (
@@ -19,31 +18,26 @@ const GoogleIssuer = "https://accounts.google.com"
 // authorization request, which means the token was not issued for this sign-in attempt.
 var ErrNonceMismatch = errors.New("id token nonce mismatch")
 
-// Provider is an OpenID Connect provider configured for the authorization code flow with PKCE.
-type Provider struct {
-	// Name identifies the provider in the identities table, e.g. "google".
-	Name     string
+// OIDCProvider is an OpenID Connect provider.
+type OIDCProvider struct {
+	name     string
 	config   oauth2.Config
 	verifier *oidc.IDTokenVerifier
 }
 
-// Claims are the identity claims read from a verified ID token.
-type Claims struct {
-	Subject       string
-	Email         string
-	EmailVerified bool
-	Name          string
-}
+var _ Provider = (*OIDCProvider)(nil)
 
-// NewProvider discovers the provider's endpoints from issuer and returns a Provider that
+// NewOIDCProvider discovers the provider's endpoints from issuer and returns a provider that
 // redirects back to redirectURL.
-func NewProvider(ctx context.Context, name, issuer, clientID, clientSecret, redirectURL string) (*Provider, error) {
+func NewOIDCProvider(
+	ctx context.Context, name, issuer, clientID, clientSecret, redirectURL string,
+) (*OIDCProvider, error) {
 	p, err := oidc.NewProvider(ctx, issuer)
 	if err != nil {
 		return nil, fmt.Errorf("discovering %s: %w", issuer, err)
 	}
-	return &Provider{
-		Name: name,
+	return &OIDCProvider{
+		name: name,
 		config: oauth2.Config{
 			ClientID:     clientID,
 			ClientSecret: clientSecret,
@@ -55,15 +49,19 @@ func NewProvider(ctx context.Context, name, issuer, clientID, clientSecret, redi
 	}, nil
 }
 
-// AuthCodeURL returns the URL to send the browser to. state and nonce must be random and
-// single-use; pkceVerifier comes from oauth2.GenerateVerifier.
-func (p *Provider) AuthCodeURL(state, nonce, pkceVerifier string) string {
+// Name implements Provider.
+func (p *OIDCProvider) Name() string {
+	return p.name
+}
+
+// AuthCodeURL implements Provider.
+func (p *OIDCProvider) AuthCodeURL(state, nonce, pkceVerifier string) string {
 	return p.config.AuthCodeURL(state, oidc.Nonce(nonce), oauth2.S256ChallengeOption(pkceVerifier))
 }
 
-// Exchange trades an authorization code for tokens, verifies the ID token's signature,
-// issuer, audience, expiry and nonce, and returns its claims.
-func (p *Provider) Exchange(ctx context.Context, code, pkceVerifier, nonce string) (*Claims, error) {
+// Exchange implements Provider. It verifies the ID token's signature, issuer, audience,
+// expiry and nonce, and returns its claims.
+func (p *OIDCProvider) Exchange(ctx context.Context, code, pkceVerifier, nonce string) (*Claims, error) {
 	token, err := p.config.Exchange(ctx, code, oauth2.VerifierOption(pkceVerifier))
 	if err != nil {
 		return nil, fmt.Errorf("exchanging code: %w", err)

@@ -1,7 +1,8 @@
 // User represents an authenticated user
 export interface User {
   name: string;
-  email: string;
+  // null when the user signed in with a provider that doesn't share email (OGS)
+  email: string | null;
   created_at: string;
 }
 
