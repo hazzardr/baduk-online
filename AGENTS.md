@@ -56,7 +56,7 @@ Full-stack baduk (Go) app. Go 1.26 backend with chi + pgx + embedded Goose migra
 
 ## Planning
 
-GitHub issues, task lists, labels, and milestones are the source of truth. See [milestone #4 — MVP: Play a complete game](https://github.com/hazzardr/baduk-online/milestone/4).
+GitHub issues, task lists, labels, and milestones are the source of truth. See [milestone #4 — MVP: Play an OGS game from baduk.online](https://github.com/hazzardr/baduk-online/milestone/4).
 
 ## Style & conventions
 
